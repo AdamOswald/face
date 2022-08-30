@@ -7,13 +7,18 @@ Adapted from Keras tests.
 
 import pytest
 import numpy as np
-from keras import Input, Model, backend as K
-from keras.utils.generic_utils import has_arg
 
 from numpy.testing import assert_allclose
 
 from lib.model import layers
 from lib.utils import get_backend
+from tests.utils import has_arg
+
+if get_backend() == "amd":
+    from keras import Input, Model, backend as K
+else:
+    # Ignore linting errors from Tensorflow's thoroughly broken import system
+    from tensorflow.keras import Input, Model, backend as K  # pylint:disable=import-error
 
 
 CONV_SHAPE = (3, 3, 256, 2048)
@@ -52,8 +57,7 @@ def layer_test(layer_cls, kwargs={}, input_shape=None, input_dtype=None,
     weights = layer.get_weights()
     layer.set_weights(weights)
 
-    if isinstance(layer, layers.ReflectionPadding2D):
-        layer.build(input_shape)
+    layer.build(input_shape)
     expected_output_shape = layer.compute_output_shape(input_shape)
 
     # test in functional API
@@ -67,7 +71,7 @@ def layer_test(layer_cls, kwargs={}, input_shape=None, input_dtype=None,
     # check with the functional API
     model = Model(inp, outp)
 
-    actual_output = model.predict(input_data)
+    actual_output = model.predict(input_data, verbose=0)
     actual_output_shape = actual_output.shape
     for expected_dim, actual_dim in zip(expected_output_shape,
                                         actual_output_shape):
@@ -83,7 +87,7 @@ def layer_test(layer_cls, kwargs={}, input_shape=None, input_dtype=None,
     if model.weights:
         weights = model.get_weights()
         recovered_model.set_weights(weights)
-        _output = recovered_model.predict(input_data)
+        _output = recovered_model.predict(input_data, verbose=0)
         assert_allclose(_output, actual_output, rtol=1e-3)
 
     # test training mode (e.g. useful when the layer has a
@@ -110,7 +114,7 @@ def test_pixel_shuffler(dummy):  # pylint:disable=unused-argument
 @pytest.mark.skipif(get_backend() == "amd", reason="amd does not support this layer")
 @pytest.mark.parametrize('dummy', [None], ids=[get_backend().upper()])
 def test_subpixel_upscaling(dummy):  # pylint:disable=unused-argument
-    """ Sub Pixel Upscaling layer test """
+    """ Sub Pixel up-scaling layer test """
     layer_test(layers.SubPixelUpscaling, input_shape=(2, 4, 4, 1024))
 
 

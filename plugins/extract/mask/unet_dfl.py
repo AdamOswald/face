@@ -30,10 +30,14 @@ class Mask(Masker):
         self.vram_warnings = 256
         self.vram_per_batch = 80
         self.batchsize = self.config["batch-size"]
+        self._storage_centering = "legacy"
 
     def init_model(self):
-        self.model = KSession(self.name, self.model_path,
-                              model_kwargs=dict(), allow_growth=self.config["allow_growth"])
+        self.model = KSession(self.name,
+                              self.model_path,
+                              model_kwargs=dict(),
+                              allow_growth=self.config["allow_growth"],
+                              exclude_gpus=self._exclude_gpus)
         self.model.load_model()
         placeholder = np.zeros((self.batchsize, self.input_size, self.input_size, 3),
                                dtype="float32")
@@ -41,8 +45,8 @@ class Mask(Masker):
 
     def process_input(self, batch):
         """ Compile the detected faces for prediction """
-        batch["feed"] = np.array([face.feed_face[..., :3]
-                                  for face in batch["detected_faces"]], dtype="float32") / 255.0
+        batch["feed"] = np.array([feed.face[..., :3]
+                                  for feed in batch["feed_faces"]], dtype="float32") / 255.0
         logger.trace("feed shape: %s", batch["feed"].shape)
         return batch
 

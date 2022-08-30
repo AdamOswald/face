@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageTk
 
+from lib.align import AlignedFace
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -27,6 +28,7 @@ class Viewport():
                      self.__class__.__name__, canvas, tk_edited_variable)
         self._canvas = canvas
         self._grid = canvas.grid
+        self._centering = "face"
         self._tk_selected_editor = canvas._display_frame.tk_selected_action
         self._landmark_mapping = dict(mouth_inner=(60, 68),
                                       mouth_outer=(48, 60),
@@ -37,8 +39,8 @@ class Viewport():
                                       nose=(27, 36),
                                       jaw=(0, 17),
                                       chin=(8, 11))
-        self._landmarks = dict()
-        self._tk_faces = dict()
+        self._landmarks = {}
+        self._tk_faces = {}
         self._objects = VisibleObjects(self)
         self._hoverbox = HoverBox(self)
         self._active_frame = ActiveFrame(self, tk_edited_variable)
@@ -56,7 +58,7 @@ class Viewport():
         face's mesh annotation based on the current user selected options. Key is the object
         type (`polygon` or `line`), value are the keyword arguments for that type. """
         state = "normal" if self._canvas.optional_annotations["mesh"] else "hidden"
-        color = self._canvas.get_muted_color("Mesh")
+        color = self._canvas.control_colors["Mesh"]
         kwargs = dict(polygon=dict(fill="", outline=color, state=state),
                       line=dict(fill=color, state=state))
         return kwargs
@@ -94,33 +96,70 @@ class Viewport():
             The type of mask to overlay onto the face
         """
         logger.debug("Toggling mask annotations to: %s. mask_type: %s", state, mask_type)
-        for (frame_idx, face_idx), det_faces in zip(
+        for (frame_idx, face_idx), det_face in zip(
                 self._objects.visible_grid[:2].transpose(1, 2, 0).reshape(-1, 2),
                 self._objects.visible_faces.flatten()):
             if frame_idx == -1:
                 continue
+
             key = "_".join([str(frame_idx), str(face_idx)])
-            mask = None if state == "hidden" else det_faces.mask.get(mask_type, None)
-            mask = mask if mask is None else mask.mask.squeeze()
+            mask = None if state == "hidden" else self._obtain_mask(det_face, mask_type)
             self._tk_faces[key].update_mask(mask)
         self.update()
 
+    @classmethod
+    def _obtain_mask(cls, detected_face, mask_type):
+        """ Obtain the mask for the correct "face" centering that is used in the thumbnail display.
+
+        Parameters
+        -----------
+        detected_face: :class:`lib.align.DetectedFace`
+            The Detected Face object to obtain the mask for
+        mask_type: str
+            The type of mask to obtain
+
+        Returns
+        -------
+        :class:`numpy.ndarray` or ``None``
+            The single channel mask of requested mask type, if it exists, otherwise ``None``
+        """
+        mask = detected_face.mask.get(mask_type)
+        if not mask:
+            return None
+        if mask.stored_centering != "face":
+            face = AlignedFace(detected_face.landmarks_xy)
+            mask.set_sub_crop(face.pose.offset[mask.stored_centering],
+                              face.pose.offset["face"],
+                              centering="face")
+        return mask.mask.squeeze()
+
     def reset(self):
         """ Reset all the cached objects on a face size change. """
-        self._landmarks = dict()
-        self._tk_faces = dict()
+        self._landmarks = {}
+        self._tk_faces = {}
 
-    def update(self):
+    def update(self, refresh_annotations=False):
         """ Update the viewport.
+
+        Parameters
+        ----------
+        refresh_annotations: bool, optional
+            ``True`` if mesh annotations should be re-calculated otherwise ``False``.
+            Default: ``False``
 
         Obtains the objects that are currently visible. Updates the visible area of the canvas
         and reloads the active frame's annotations. """
         self._objects.update()
-        self._update_viewport()
+        self._update_viewport(refresh_annotations)
         self._active_frame.reload_annotations()
 
-    def _update_viewport(self):
+    def _update_viewport(self, refresh_annotations):
         """ Update the viewport
+
+        Parameters
+        ----------
+        refresh_annotations: bool
+            ``True`` if mesh annotations should be re-calculated otherwise ``False``
 
         Clear out cached objects that are not currently in view. Populate the cache for any
         faces that are now in view. Populate the correct face image and annotations for each
@@ -130,20 +169,17 @@ class Viewport():
             return
         self._discard_tk_faces()
 
-        if self._canvas.optional_annotations["mesh"]:  # Display any hidden end of row meshes
-            self._canvas.itemconfig("viewport_mesh", state="normal")
-
         for collection in zip(self._objects.visible_grid.transpose(1, 2, 0),
                               self._objects.images,
                               self._objects.meshes,
                               self._objects.visible_faces):
             for (frame_idx, face_idx, pnt_x, pnt_y), image_id, mesh_ids, face in zip(*collection):
                 top_left = np.array((pnt_x, pnt_y))
-                if frame_idx == self._active_frame.frame_index:
+                if frame_idx == self._active_frame.frame_index and not refresh_annotations:
                     logger.trace("Skipping active frame: %s", frame_idx)
                     continue
                 if frame_idx == -1:
-                    logger.debug("Blanking non-existant face")
+                    logger.trace("Blanking non-existant face")
                     self._canvas.itemconfig(image_id, image="")
                     for area in mesh_ids.values():
                         for mesh_id in area:
@@ -152,14 +188,17 @@ class Viewport():
 
                 tk_face = self.get_tk_face(frame_idx, face_idx, face)
                 self._canvas.itemconfig(image_id, image=tk_face.photo)
+
                 if (self._canvas.optional_annotations["mesh"]
-                        or frame_idx == self._active_frame.frame_index):
-                    landmarks = self.get_landmarks(frame_idx, face_idx, face, top_left)
+                        or frame_idx == self._active_frame.frame_index
+                        or refresh_annotations):
+                    landmarks = self.get_landmarks(frame_idx, face_idx, face, top_left,
+                                                   refresh=True)
                     self._locate_mesh(mesh_ids, landmarks)
 
     def _discard_tk_faces(self):
         """ Remove any :class:`TKFace` objects from the cache that are not currently displayed. """
-        keys = ["{}_{}".format(pnt_x, pnt_y)
+        keys = [f"{pnt_x}_{pnt_y}"
                 for pnt_x, pnt_y in self._objects.visible_grid[:2].T.reshape(-1, 2)]
         for key in list(self._tk_faces):
             if key not in keys:
@@ -176,7 +215,7 @@ class Viewport():
             The frame index to obtain the face for
         face_index: int
             The face index of the face within the requested frame
-        face: :class:`~lib.faces_detect.DetectedFace`
+        face: :class:`~lib.align.DetectedFace`
             The detected face object, containing the thumbnail jpg
 
         Returns
@@ -190,13 +229,16 @@ class Viewport():
         if key not in self._tk_faces or is_active:
             logger.trace("creating new tk_face: (key: %s, is_active: %s)", key, is_active)
             if is_active:
-                face.load_aligned(self._active_frame.current_frame,
-                                  size=self.face_size,
-                                  force=True)
-                image = face.aligned_face
-                face.aligned = dict()
+                image = AlignedFace(face.landmarks_xy,
+                                    image=self._active_frame.current_frame,
+                                    centering=self._centering,
+                                    size=self.face_size).face
             else:
-                image = face.thumbnail
+                image = AlignedFace(face.landmarks_xy,
+                                    image=cv2.imdecode(face.thumbnail, cv2.IMREAD_UNCHANGED),
+                                    centering=self._centering,
+                                    size=self.face_size,
+                                    is_aligned=True).face
             tk_face = self._get_tk_face_object(face, image, is_active)
             self._tk_faces[key] = tk_face
         else:
@@ -213,7 +255,7 @@ class Viewport():
 
         Parameters
         ----------
-        face: :class:`lib.faces_detect.DetectedFace`
+        face: :class:`lib.align.DetectedFace`
             A detected face object to create the :class:`TKFace` from
         image: :class:`numpy.ndarray`
             The jpg thumbnail or the 3 channel image for the face
@@ -228,8 +270,7 @@ class Viewport():
         """
         get_mask = (self._canvas.optional_annotations["mask"] or
                     (is_active and self.selected_editor == "mask"))
-        mask = face.mask.get(self._canvas.selected_mask, None) if get_mask else None
-        mask = mask if mask is None else mask.mask.squeeze()
+        mask = self._obtain_mask(face, self._canvas.selected_mask) if get_mask else None
         tk_face = TKFace(image, size=self.face_size, mask=mask)
         logger.trace("face: %s, tk_face: %s", face, tk_face)
         return tk_face
@@ -247,6 +288,8 @@ class Viewport():
             The frame index to obtain the face for
         face_index: int
             The face index of the face within the requested frame
+        face: :class:`lib.align.DetectedFace`
+            The detected face object to obtain landmarks for
         top_left: tuple
             The top left (x, y) points of the face's bounding box within the viewport
         refresh: bool, optional
@@ -260,13 +303,15 @@ class Viewport():
             (`polygon`, `line`). The value is a list containing the (x, y) coordinates of each
             part of the mesh annotation, from the top left corner location.
         """
-        key = "{}_{}".format(frame_index, face_index)
+        key = f"{frame_index}_{face_index}"
         landmarks = self._landmarks.get(key, None)
         if not landmarks or refresh:
-            face.load_aligned(None, size=self.face_size, force=True)
+            aligned = AlignedFace(face.landmarks_xy,
+                                  centering=self._centering,
+                                  size=self.face_size)
             landmarks = dict(polygon=[], line=[])
             for area, val in self._landmark_mapping.items():
-                points = face.aligned_landmarks[val[0]:val[1]] + top_left
+                points = aligned.landmarks[val[0]:val[1]] + top_left
                 shape = "polygon" if area.endswith("eye") or area.startswith("mouth") else "line"
                 landmarks[shape].append(points)
             self._landmarks[key] = landmarks
@@ -306,7 +351,7 @@ class Viewport():
             If the given coordinates are not over a face, then the frame and face indices will be
             -1
         """
-        if point_x > self._grid.dimensions[0]:
+        if not self._grid.is_valid or point_x > self._grid.dimensions[0]:
             retval = np.array((-1, -1, -1, -1))
         else:
             x_idx = np.searchsorted(self._objects.visible_grid[2, 0, :], point_x, side="left") - 1
@@ -359,7 +404,7 @@ class VisibleObjects():
 
     @property
     def visible_faces(self):
-        """ :class:`numpy.ndarray`: The currently visible :class:`~lib.faces_detect.DetectedFace`
+        """ :class:`numpy.ndarray`: The currently visible :class:`~lib.align.DetectedFace`
         objects.
 
         A numpy array of shape (`rows`, `columns`) corresponding to the viewable area of the
@@ -391,36 +436,56 @@ class VisibleObjects():
     def _top_left(self):
         """ :class:`numpy.ndarray`: The canvas (`x`, `y`) position of the face currently in the
         viewable area's top left position. """
-        return np.array(self._canvas.coords(self._images[0][0]), dtype="int")
+        if self._images is None or not np.any(self._images):
+            retval = [0, 0]
+        else:
+            retval = self._canvas.coords(self._images[0][0])
+        return np.array(retval, dtype="int")
 
     def update(self):
         """ Load and unload thumbnails in the visible area of the faces viewer. """
+        if self._canvas.optional_annotations["mesh"]:  # Display any hidden end of row meshes
+            self._canvas.itemconfig("viewport_mesh", state="normal")
+
         self._visible_grid, self._visible_faces = self._grid.visible_area
-        if (isinstance(self._images, np.ndarray) and
-                self._visible_grid.shape[-1] != self._images.shape[-1]):
-            self._recycle_objects()
+        if (isinstance(self._images, np.ndarray) and isinstance(self._visible_grid, np.ndarray)
+                and self._visible_grid.shape[1:] != self._images.shape):
+            self._reset_viewport()
 
         required_rows = self._visible_grid.shape[1] if self._grid.is_valid else 0
         existing_rows = len(self._images)
         logger.trace("existing_rows: %s. required_rows: %s", existing_rows, required_rows)
 
         if existing_rows > required_rows:
-            for image_id in self._images[required_rows: existing_rows].flatten():
-                logger.trace("Hiding image id: %s", image_id)
-                self._canvas.itemconfig(image_id, image="")
-
+            self._remove_rows(existing_rows, required_rows)
         if existing_rows < required_rows:
             self._add_rows(existing_rows, required_rows)
 
         self._shift()
 
-    def _recycle_objects(self):
-        """  On a column count change, place all existing objects into the recycle bin so that
-        they can be used for the new grid shape and reset the objects size to the new size. """
+    def _reset_viewport(self):
+        """ Reset all objects in the viewport on a column count change. Reset the viewport size
+        to the newly specified face size. """
+        logger.debug("Resetting Viewport")
         self._size = self._viewport.face_size
         images = self._images.flatten().tolist()
         meshes = self._meshes.flatten().tolist()
+        self._recycle_objects(images, meshes)
+        self._images = []
+        self._meshes = []
 
+    def _recycle_objects(self, images, meshes):
+        """ Reset the visible property and position of the given objects and add to the recycle
+        bin.
+
+        Parameters
+        ---------
+        images: list
+            List of image_ids to be recycled
+        meshes: list
+            List of dictionaries containing the mesh annotation ids to be recycled
+        """
+        logger.debug("Recycling objects: (images: %s, meshes: %s)", len(images), len(meshes))
         for image_id in images:
             self._canvas.itemconfig(image_id, image="")
             self._canvas.coords(image_id, 0, 0)
@@ -434,8 +499,24 @@ class VisibleObjects():
         self._recycled["meshes"].extend(meshes)
         logger.trace("Recycled objects: %s", self._recycled)
 
-        self._images = []
-        self._meshes = []
+    def _remove_rows(self, existing_rows, required_rows):
+        """ Remove and recycle rows from the viewport that are not in the view area.
+
+        Parameters
+        ----------
+        existing_rows: int
+            The number of existing rows within the viewport
+        required_rows: int
+            The number of rows required by the viewport
+        """
+        logger.debug("Removing rows from viewport: (existing_rows: %s, required_rows: %s)",
+                     existing_rows, required_rows)
+        self._recycle_objects(self._images[required_rows: existing_rows].flatten().tolist(),
+                              self._meshes[required_rows: existing_rows].flatten().tolist())
+        self._images = self._images[:required_rows]
+        self._meshes = self._meshes[:required_rows]
+        logger.trace("self._images: %s, self._meshes: %s",
+                     self._images.shape, self._meshes.shape)
 
     def _add_rows(self, existing_rows, required_rows):
         """ Add rows to the viewport.
@@ -447,12 +528,14 @@ class VisibleObjects():
         required_rows: int
             The number of rows required by the viewport
         """
+        logger.debug("Adding rows to viewport: (existing_rows: %s, required_rows: %s)",
+                     existing_rows, required_rows)
         columns = self._grid.columns_rows[0]
         if not isinstance(self._images, np.ndarray):
             base_coords = [(col * self._size, 0) for col in range(columns)]
         else:
             base_coords = [self._canvas.coords(item_id) for item_id in self._images[0]]
-        logger.debug("existing rows: %s, required_rows: %s, base_coords: %s",
+        logger.trace("existing rows: %s, required_rows: %s, base_coords: %s",
                      existing_rows, required_rows, base_coords)
         images = []
         meshes = []
@@ -474,7 +557,7 @@ class VisibleObjects():
                          images.shape, meshes.shape)
             self._images = np.concatenate((self._images, images))
             self._meshes = np.concatenate((self._meshes, meshes))
-        logger.debug("self._images: %s, self._meshes: %s", self._images.shape, self._meshes.shape)
+        logger.trace("self._images: %s, self._meshes: %s", self._images.shape, self._meshes.shape)
 
     def _get_image(self, coordinates):
         """ Create or recycle a tkinter canvas image object with the given coordinates.
@@ -609,8 +692,11 @@ class HoverBox():  # pylint:disable=too-few-public-methods
         coords = (int(self._canvas.canvasx(pnts[0])), int(self._canvas.canvasy(pnts[1])))
         face = self._viewport.face_from_point(*coords)
         frame_idx, face_idx = face[:2]
-        is_zoomed = self._globals.is_zoomed
 
+        if frame_idx == self._current_frame_index and face_idx == self._current_face_index:
+            return
+
+        is_zoomed = self._globals.is_zoomed
         if (-1 in face or (frame_idx == self._globals.frame_index
                            and (not is_zoomed or
                                 (is_zoomed and face_idx == self._globals.tk_face_index.get())))):
@@ -619,6 +705,8 @@ class HoverBox():  # pylint:disable=too-few-public-methods
             self._current_frame_index = None
             self._current_face_index = None
             return
+
+        logger.debug("Viewport hover: frame_idx: %s, face_idx: %s", frame_idx, face_idx)
 
         self._canvas.config(cursor="hand2")
         self._highlight(face[2:])
@@ -649,6 +737,8 @@ class HoverBox():  # pylint:disable=too-few-public-methods
         """
         frame_id = self._current_frame_index
         is_zoomed = self._globals.is_zoomed
+        logger.debug("Face clicked. Global frame index: %s, Current frame_id: %s, is_zoomed: %s",
+                     self._globals.frame_index, frame_id, is_zoomed)
         if frame_id is None or (frame_id == self._globals.frame_index and not is_zoomed):
             return
         face_idx = self._current_face_index if is_zoomed else 0
@@ -753,13 +843,13 @@ class ActiveFrame():
         self._canvas.itemconfig("active_highlighter", state="hidden")
 
         for key in ("polygon", "line"):
-            tag = "active_mesh_{}".format(key)
-            self._canvas.itemconfig(tag, **self._viewport.mesh_kwargs[key])
+            tag = f"active_mesh_{key}"
+            self._canvas.itemconfig(tag, **self._viewport.mesh_kwargs[key], width=1)
             self._canvas.dtag(tag)
 
         if self._viewport.selected_editor == "mask" and not self._optional_annotations["mask"]:
             for key, tk_face in self._tk_faces.items():
-                if key.startswith("{}_".format(self._last_execution["frame_index"])):
+                if key.startswith(f"{self._last_execution['frame_index']}_"):
                     tk_face.update_mask(None)
 
     def _set_active_objects(self):
@@ -850,6 +940,8 @@ class ActiveFrame():
                     self._assets["meshes"],
                     self._assets["boxes"],
                     self._assets["faces"])):
+            if det_face is None:
+                continue
             top_left = np.array(self._canvas.coords(image_id))
             coords = (*top_left, *top_left + self._size)
             tk_face = self._viewport.get_tk_face(self.frame_index, face_idx, det_face)
@@ -881,32 +973,28 @@ class ActiveFrame():
             the mesh for the given face
         face_index: int
             The face index within the frame for the given face
-        detected_face: :class:`~lib.faces_detect.DetectedFace`
+        detected_face: :class:`~lib.align.DetectedFace`
             The detected face object that contains the landmarks for generating the mesh
         top_left: tuple
             The (x, y) top left co-ordinates of the mesh's bounding box
         """
         state = "normal" if (self._tk_vars["selected_editor"].get() != "Mask" or
                              self._optional_annotations["mesh"]) else "hidden"
-        kwargs = dict(polygon=dict(fill="", outline=self._canvas.control_colors["Mesh"]),
-                      line=dict(fill=self._canvas.control_colors["Mesh"]))
+        kwargs = dict(polygon=dict(fill="", width=2, outline=self._canvas.control_colors["Mesh"]),
+                      line=dict(fill=self._canvas.control_colors["Mesh"], width=2))
 
         edited = (self._tk_vars["edited"].get() and
                   self._tk_vars["selected_editor"].get() not in ("Mask", "View"))
-        relocate = self._viewport.face_size != self._last_execution["size"] or (
-            state == "normal" and not self._optional_annotations["mesh"])
-        if relocate or edited:
-            landmarks = self._viewport.get_landmarks(self.frame_index,
-                                                     face_index,
-                                                     detected_face,
-                                                     top_left,
-                                                     edited)
+        landmarks = self._viewport.get_landmarks(self.frame_index,
+                                                 face_index,
+                                                 detected_face,
+                                                 top_left,
+                                                 edited)
         for key, kwarg in kwargs.items():
             for idx, mesh_id in enumerate(mesh_ids[key]):
-                if relocate:
-                    self._canvas.coords(mesh_id, *landmarks[key][idx].flatten())
+                self._canvas.coords(mesh_id, *landmarks[key][idx].flatten())
                 self._canvas.itemconfig(mesh_id, state=state, **kwarg)
-                self._canvas.addtag_withtag("active_mesh_{}".format(key), mesh_id)
+                self._canvas.addtag_withtag(f"active_mesh_{key}", mesh_id)
 
 
 class TKFace():

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """ Editor objects for the manual adjustments tool """
 
+import gettext
 import logging
 import tkinter as tk
 
@@ -11,6 +12,10 @@ import numpy as np
 from lib.gui.control_helper import ControlPanelOption
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+# LOCALES
+_LANG = gettext.translation("tools.manual", localedir="locales", fallback=True)
+_ = _LANG.gettext
 
 
 class Editor():
@@ -31,6 +36,7 @@ class Editor():
     def __init__(self, canvas, detected_faces, control_text="", key_bindings=None):
         logger.debug("Initializing %s: (canvas: '%s', detected_faces: %s, control_text: %s)",
                      self.__class__.__name__, canvas, detected_faces, control_text)
+        self.zoomed_centering = "face"  # Override for different zoomed centering per editor
         self._canvas = canvas
         self._globals = canvas._globals
         self._det_faces = detected_faces
@@ -619,5 +625,6 @@ class View(Editor):
 
     def _add_actions(self):
         """ Add the optional action buttons to the viewer. Current actions are Zoom. """
-        self._add_action("magnify", "zoom", "Magnify/Demagnify the View", group=None, hotkey="M")
+        self._add_action("magnify", "zoom", _("Magnify/Demagnify the View"),
+                         group=None, hotkey="M")
         self._actions["magnify"]["tk_var"].trace("w", lambda *e: self._globals.tk_update.set(True))

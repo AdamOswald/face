@@ -11,7 +11,8 @@ from time import time
 
 import psutil
 
-from .utils import get_config, get_images, LongRunningTask
+from .analysis import Session
+from .utils import get_config, get_images, LongRunningTask, preview_trigger
 
 if os.name == "nt":
     import win32console  # pylint: disable=import-error
@@ -31,6 +32,7 @@ class ProcessWrapper():
         self.pathscript = os.path.realpath(os.path.dirname(sys.argv[0]))
         self.command = None
         self.statusbar = get_config().statusbar
+        self._training_session_location = dict()
         self.task = FaceswapControl(self)
         logger.debug("Initialized %s", self.__class__.__name__)
 
@@ -60,7 +62,7 @@ class ProcessWrapper():
             return
         category, command = self.tk_vars["generate"].get().split(",")
         args = self.build_args(category, command=command, generate=True)
-        self.tk_vars["consoleclear"].set(True)
+        self.tk_vars["console_clear"].set(True)
         logger.debug(" ".join(args))
         print(" ".join(args))
         self.tk_vars["generate"].set(None)
@@ -69,7 +71,7 @@ class ProcessWrapper():
         """ Prepare the environment for execution """
         logger.debug("Preparing for execution")
         self.tk_vars["runningtask"].set(True)
-        self.tk_vars["consoleclear"].set(True)
+        self.tk_vars["console_clear"].set(True)
         if self.command == "train":
             self.tk_vars["istraining"].set(True)
         print("Loading...")
@@ -84,7 +86,11 @@ class ProcessWrapper():
         return args
 
     def build_args(self, category, command=None, generate=False):
-        """ Build the faceswap command and arguments list """
+        """ Build the faceswap command and arguments list.
+
+        If training, pass the model folder and name to the training
+        :class:`lib.gui.analysis.Session` for the GUI.
+        """
         logger.debug("Build cli arguments: (category: %s, command: %s, generate: %s)",
                      category, command, generate)
         command = self.command if not command else command
@@ -98,7 +104,8 @@ class ProcessWrapper():
         for cliopt in cli_opts.gen_cli_arguments(command):
             args.extend(cliopt)
             if command == "train" and not generate:
-                self.init_training_session(cliopt)
+                self._get_training_session_info(cliopt)
+
         if not generate:
             args.append("-gui")  # Indicate to Faceswap that we are running the GUI
         if generate:
@@ -109,16 +116,21 @@ class ProcessWrapper():
         logger.debug("Built cli arguments: (%s)", args)
         return args
 
-    @staticmethod
-    def init_training_session(cliopt):
-        """ Set the session stats for disable logging, model folder and model name """
-        session = get_config().session
-        if cliopt[0] == "-t":
-            session.modelname = cliopt[1].lower().replace("-", "_")
-            logger.debug("modelname: '%s'", session.modelname)
-        if cliopt[0] == "-m":
-            session.modeldir = cliopt[1]
-            logger.debug("modeldir: '%s'", session.modeldir)
+    def _get_training_session_info(self, cli_option):
+        """ Set the model folder and model name to :`attr:_training_session_location` so the global
+        session picks them up for logging to the graph and analysis tab.
+
+        Parameters
+        ----------
+        cli_option: list
+            The command line option to be checked for model folder or name
+        """
+        if cli_option[0] == "-t":
+            self._training_session_location["model_name"] = cli_option[1].lower().replace("-", "_")
+            logger.debug("model_name: '%s'", self._training_session_location["model_name"])
+        if cli_option[0] == "-m":
+            self._training_session_location["model_folder"] = cli_option[1]
+            logger.debug("model_folder: '%s'", self._training_session_location["model_folder"])
 
     def terminate(self, message):
         """ Finalize wrapper when process has exited """
@@ -126,11 +138,12 @@ class ProcessWrapper():
         self.tk_vars["runningtask"].set(False)
         if self.task.command == "train":
             self.tk_vars["istraining"].set(False)
+            Session.stop_training()
         self.statusbar.stop()
         self.statusbar.message.set(message)
         self.tk_vars["display"].set(None)
         get_images().delete_preview()
-        get_config().session.__init__()
+        preview_trigger().clear(trigger_type=None)
         self.command = None
         logger.debug("Terminated Faceswap processes")
         print("Process exited.")
@@ -141,6 +154,7 @@ class FaceswapControl():
     def __init__(self, wrapper):
         logger.debug("Initializing %s", self.__class__.__name__)
         self.wrapper = wrapper
+        self._session_info = wrapper._training_session_location
         self.config = get_config()
         self.statusbar = self.config.statusbar
         self.command = None
@@ -188,20 +202,25 @@ class FaceswapControl():
                         (self.command == "effmpeg" and self.capture_ffmpeg(output)) or
                         (self.command not in ("train", "effmpeg") and self.capture_tqdm(output))):
                     continue
-                if (self.command == "train" and
-                        self.wrapper.tk_vars["istraining"].get() and
-                        "[saved models]" in output.strip().lower()):
-                    logger.debug("Trigger GUI Training update")
-                    logger.trace("tk_vars: %s", {itm: var.get()
-                                                 for itm, var in self.wrapper.tk_vars.items()})
-                    if not self.config.session.initialized:
-                        # Don't initialize session until after the first save as state
-                        # file must exist first
-                        logger.debug("Initializing curret training session")
-                        self.config.session.initialize_session(is_training=True)
-                    self.wrapper.tk_vars["updatepreview"].set(True)
-                    self.wrapper.tk_vars["refreshgraph"].set(True)
-                print(output.strip())
+                if self.command == "train" and self.wrapper.tk_vars["istraining"].get():
+                    if "[saved models]" in output.strip().lower():
+                        logger.debug("Trigger GUI Training update")
+                        logger.trace("tk_vars: %s", {itm: var.get()
+                                                     for itm, var in self.wrapper.tk_vars.items()})
+                        if not Session.is_training:
+                            # Don't initialize session until after the first save as state
+                            # file must exist first
+                            logger.debug("Initializing curret training session")
+                            Session.initialize_session(
+                                self._session_info["model_folder"],
+                                self._session_info["model_name"],
+                                is_training=True)
+                        self.wrapper.tk_vars["updatepreview"].set(True)
+                        self.wrapper.tk_vars["refreshgraph"].set(True)
+                    if "[preview updated]" in output.strip().lower():
+                        self.wrapper.tk_vars["updatepreview"].set(True)
+                        continue
+                print(output.rstrip())
         returncode = self.process.poll()
         message = self.set_final_status(returncode)
         self.wrapper.terminate(message)
@@ -222,6 +241,13 @@ class FaceswapControl():
                 break
             if output:
                 if self.command != "train" and self.capture_tqdm(output):
+                    continue
+                if self.command == "train" and output.startswith("Reading training images"):
+                    print(output.strip(), file=sys.stdout)
+                    continue
+                if os.name == "nt" and "Call to CreateProcess failed. Error code: 2" in output:
+                    # Suppress ptxas errors on Tensorflow for Windows
+                    logger.debug("Suppressed call to subprocess error: '%s'", output)
                     continue
                 print(output.strip(), file=sys.stderr)
         logger.debug("Terminated stderr reader")

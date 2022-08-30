@@ -9,16 +9,17 @@ from itertools import product
 import pytest
 import numpy as np
 
-from keras import Input, Model, backend as K
+
 from numpy.testing import assert_allclose
 
-from lib.model.nn_blocks import NNBlocks
+from lib.model import nn_blocks
 from lib.utils import get_backend
 
-_PARAMS = ["use_icnr_init", "use_convaware_init", "use_reflect_padding"]
-_VALUES = list(product([True, False], repeat=len(_PARAMS)))
-_IDS = ["{}[{}]".format("|".join([_PARAMS[idx] for idx, b in enumerate(v) if b]),
-                        get_backend().upper()) for v in _VALUES]
+if get_backend() == "amd":
+    from keras import Input, Model, backend as K
+else:
+    # Ignore linting errors from Tensorflow's thoroughly broken import system
+    from tensorflow.keras import Input, Model, backend as K  # pylint:disable=import-error
 
 
 def block_test(layer_func, kwargs={}, input_shape=None):
@@ -46,7 +47,7 @@ def block_test(layer_func, kwargs={}, input_shape=None):
     # check with the functional API
     model = Model(inp, outp)
 
-    actual_output = model.predict(input_data)
+    actual_output = model.predict(input_data, verbose=0)
 
     # test serialization, weight setting at model level
     model_config = model.get_config()
@@ -54,23 +55,30 @@ def block_test(layer_func, kwargs={}, input_shape=None):
     if model.weights:
         weights = model.get_weights()
         recovered_model.set_weights(weights)
-        _output = recovered_model.predict(input_data)
+        _output = recovered_model.predict(input_data, verbose=0)
         assert_allclose(_output, actual_output, rtol=1e-3)
 
     # for further checks in the caller function
     return actual_output
 
 
+_PARAMS = ["use_icnr_init", "use_convaware_init", "use_reflect_padding"]
+_VALUES = list(product([True, False], repeat=len(_PARAMS)))
+_IDS = ["{}[{}]".format("|".join([_PARAMS[idx] for idx, b in enumerate(v) if b]),
+                        get_backend().upper()) for v in _VALUES]
+
+
 @pytest.mark.parametrize(_PARAMS, _VALUES, ids=_IDS)
 def test_blocks(use_icnr_init, use_convaware_init, use_reflect_padding):
     """ Test for all blocks contained within the NNBlocks Class """
-    cls_ = NNBlocks(use_icnr_init=use_icnr_init,
-                    use_convaware_init=use_convaware_init,
-                    use_reflect_padding=use_reflect_padding)
-    block_test(cls_.conv2d, input_shape=(2, 5, 5, 128), kwargs=dict(filters=1024, kernel_size=3))
-    block_test(cls_.conv, input_shape=(2, 8, 8, 32), kwargs=dict(filters=64))
-    block_test(cls_.conv_sep, input_shape=(2, 8, 8, 32), kwargs=dict(filters=64))
-    block_test(cls_.upscale, input_shape=(2, 4, 4, 128), kwargs=dict(filters=64))
-    block_test(cls_.res_block, input_shape=(2, 2, 2, 64), kwargs=dict(filters=64))
-    block_test(cls_.upscale2x, input_shape=(2, 4, 4, 128), kwargs=dict(filters=64, fast=False))
-    block_test(cls_.upscale2x, input_shape=(2, 4, 4, 128), kwargs=dict(filters=64, fast=True))
+    config = dict(icnr_init=use_icnr_init,
+                  conv_aware_init=use_convaware_init,
+                  reflect_padding=use_reflect_padding)
+    nn_blocks.set_config(config)
+    block_test(nn_blocks.Conv2DOutput(64, 3), input_shape=(2, 8, 8, 32))
+    block_test(nn_blocks.Conv2DBlock(64), input_shape=(2, 8, 8, 32))
+    block_test(nn_blocks.SeparableConv2DBlock(64), input_shape=(2, 8, 8, 32))
+    block_test(nn_blocks.UpscaleBlock(64), input_shape=(2, 4, 4, 128))
+    block_test(nn_blocks.Upscale2xBlock(64, fast=True), input_shape=(2, 4, 4, 128))
+    block_test(nn_blocks.Upscale2xBlock(64, fast=False), input_shape=(2, 4, 4, 128))
+    block_test(nn_blocks.ResidualBlock(64), input_shape=(2, 4, 4, 64))

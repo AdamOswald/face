@@ -39,14 +39,6 @@ _base module
    :undoc-members:
    :show-inheritance:
 
-detect._base module
--------------------
-
-.. automodule:: plugins.extract.detect._base
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 align._base module
 ------------------
 
@@ -55,10 +47,55 @@ align._base module
    :undoc-members:
    :show-inheritance:
 
+vgg\_face2\_keras module
+------------------------
+
+.. automodule:: plugins.extract.recognition.vgg_face2_keras
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+detect plugins package
+======================
+
+.. contents:: Contents
+   :local:
+
+detect._base module
+-------------------
+
+.. automodule:: plugins.extract.detect._base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+detect.mtcnn module
+-------------------
+
+.. automodule:: plugins.extract.detect.mtcnn
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+mask plugins package
+====================
+
+.. contents:: Contents
+   :local:
+
 mask._base module
 -----------------
 
 .. automodule:: plugins.extract.mask._base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mask.bisenet_fp module
+----------------------
+.. automodule:: plugins.extract.mask.bisenet_fp
    :members:
    :undoc-members:
    :show-inheritance:
