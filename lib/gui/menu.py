@@ -217,8 +217,6 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
         self.add_command(label="Update Faceswap...",
                          underline=0,
                          command=lambda action="update": self.in_thread(action))
-        if self._build_branches_menu():
-            self.add_cascade(label="Switch Branch", underline=7, menu=self._branches_menu)
         self.add_separator()
         self._build_recources_menu()
         self.add_cascade(label="Resources", underline=0, menu=self.recources_menu)
@@ -248,84 +246,6 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
 
         for branch in branches:
             self._branches_menu.add_command(
-                label=branch,
-                command=lambda b=branch: self._switch_branch(b))
-        return True
-
-    @staticmethod
-    def _get_branches():
-        """ Get the available github branches
-
-        Returns
-        -------
-        str
-            The list of branches available. If no branches were found or there was an
-            error then `None` is returned
-        """
-        gitcmd = "git branch -a"
-        with Popen(gitcmd, shell=True, stdout=PIPE, stderr=STDOUT, cwd=_WORKING_DIR) as cmd:
-            stdout, _ = cmd.communicate()
-            retcode = cmd.poll()
-        if retcode != 0:
-            logger.debug("Unable to list git branches. return code: %s, message: %s",
-                         retcode, stdout.decode().strip().replace("\n", " - "))
-            return None
-        return stdout.decode(locale.getpreferredencoding())
-
-    @staticmethod
-    def _filter_branches(stdout):
-        """ Filter the branches, remove duplicates and the current branch and return a sorted
-        list.
-
-        Parameters
-        ----------
-        stdout: str
-            The output from the git branch query converted to a string
-
-        Returns
-        -------
-        list
-            Unique list of available branches sorted in alphabetical order
-        """
-        current = None
-        branches = set()
-        for line in stdout.splitlines():
-            branch = line[line.rfind("/") + 1:] if "/" in line else line.strip()
-            if branch.startswith("*"):
-                branch = branch.replace("*", "").strip()
-                current = branch
-                continue
-            branches.add(branch)
-        logger.debug("Found branches: %s", branches)
-        if current in branches:
-            logger.debug("Removing current branch from output: %s", current)
-            branches.remove(current)
-
-        branches = sorted(list(branches), key=str.casefold)
-        logger.debug("Final branches: %s", branches)
-        return branches
-
-    @staticmethod
-    def _switch_branch(branch):
-        """ Change the currently checked out branch, and return a notification.
-
-        Parameters
-        ----------
-        str
-            The branch to switch to
-        """
-        logger.info("Switching branch to '%s'...", branch)
-        gitcmd = f"git checkout {branch}"
-        with Popen(gitcmd, shell=True, stdout=PIPE, stderr=STDOUT, cwd=_WORKING_DIR) as cmd:
-            stdout, _ = cmd.communicate()
-            retcode = cmd.poll()
-        if retcode != 0:
-            logger.error("Unable to switch branch. return code: %s, message: %s",
-                         retcode, stdout.decode().strip().replace("\n", " - "))
-            return
-        logger.info("Succesfully switched to '%s'. You may want to check for updates to make sure "
-                    "that you have the latest code.", branch)
-        logger.info("Please restart Faceswap to complete the switch.")
 
     def _build_recources_menu(self):
         """ Build resources menu """
@@ -371,6 +291,9 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
         encoding = locale.getpreferredencoding()
         logger.debug("Encoding: %s", encoding)
         self.check_for_updates(encoding, check=True)
+        logger.info("NB: You are on release 1.0 of Faceswap, which is unlikely to receive further "
+                    "updates. You can upgrade to the latest Faceswap by visiting "
+                    "https://faceswap.dev")
         self.root.config(cursor="")
 
     def update(self):
@@ -385,6 +308,9 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
         update_deps.main(is_gui=True)
         if success:
             logger.info("Please restart Faceswap to complete the update.")
+        logger.info("NB: You are on release 1.0 of Faceswap, which is unlikely to receive further "
+                    "updates. You can upgrade to the latest Faceswap by visiting "
+                    "https://faceswap.dev")
         self.root.config(cursor="")
 
     @staticmethod
@@ -493,74 +419,3 @@ class TaskBar(ttk.Frame):  # pylint: disable=too-many-ancestors
             loader, kwargs = self._loader_and_kwargs(loadtype)
             if loadtype == "load":
                 kwargs["current_tab"] = True
-            cmd = getattr(self._config.tasks, loader)
-            btn = ttk.Button(
-                frame,
-                image=get_images().icons[btntype],
-                command=lambda fn=cmd, kw=kwargs: fn(**kw))
-            btn.pack(side=tk.LEFT, anchor=tk.W)
-            hlp = self.set_help(btntype)
-            Tooltip(btn, text=hlp, wrap_length=200)
-
-    @staticmethod
-    def _loader_and_kwargs(btntype):
-        if btntype == "save":
-            loader = btntype
-            kwargs = dict(save_as=False)
-        elif btntype == "save_as":
-            loader = "save"
-            kwargs = dict(save_as=True)
-        else:
-            loader = btntype
-            kwargs = {}
-        logger.debug("btntype: %s, loader: %s, kwargs: %s", btntype, loader, kwargs)
-        return loader, kwargs
-
-    def _settings_btns(self):
-        # pylint: disable=cell-var-from-loop
-        frame = ttk.Frame(self._btn_frame)
-        frame.pack(side=tk.LEFT, anchor=tk.W, expand=False, padx=2)
-        for name in ("extract", "train", "convert"):
-            btntype = f"settings_{name}"
-            btntype = btntype if btntype in get_images().icons else "settings"
-            logger.debug("Adding button: '%s'", btntype)
-            btn = ttk.Button(
-                frame,
-                image=get_images().icons[btntype],
-                command=lambda n=name: open_popup(name=n))
-            btn.pack(side=tk.LEFT, anchor=tk.W)
-            hlp = _("Configure {} settings...").format(name.title())
-            Tooltip(btn, text=hlp, wrap_length=200)
-
-    @staticmethod
-    def set_help(btntype):
-        """ Set the helptext for option buttons """
-        logger.debug("Setting help")
-        hlp = ""
-        task = _("currently selected Task") if btntype[-1] == "2" else _("Project")
-        if btntype.startswith("reload"):
-            hlp = _("Reload {} from disk").format(task)
-        if btntype == "new":
-            hlp = _("Create a new {}...").format(task)
-        if btntype.startswith("clear"):
-            hlp = _("Reset {} to default").format(task)
-        elif btntype.startswith("save") and "_" not in btntype:
-            hlp = _("Save {}").format(task)
-        elif btntype.startswith("save_as"):
-            hlp = _("Save {} as...").format(task)
-        elif btntype.startswith("load"):
-            msg = task
-            if msg.endswith("Task"):
-                msg += _(" from a task or project file")
-            hlp = _("Load {}...").format(msg)
-        return hlp
-
-    def _group_separator(self):
-        separator = ttk.Separator(self._btn_frame, orient="vertical")
-        separator.pack(padx=(2, 1), fill=tk.Y, side=tk.LEFT)
-
-    def _section_separator(self):
-        frame = ttk.Frame(self)
-        frame.pack(side=tk.BOTTOM, fill=tk.X)
-        separator = ttk.Separator(frame, orient="horizontal")
-        separator.pack(fill=tk.X, side=tk.LEFT, expand=True)
