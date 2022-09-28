@@ -13,6 +13,19 @@ source_code:
   encoding: "UTF-8"
   line_ending: "UNKNOWN"
 languages:
+- language: "scala"
+  language_version: "0"
+  skip: false
+  source_code:
+    excludes: []
+    includes: []
+    encoding: "UTF-8"
+    line_ending: "UNKNOWN"
+  processors:
+  - engine: "scalafmt"
+    parameters: {}
+  - engine: "scalafix"
+    parameters: {}
 - language: "json"
   language_version: "0"
   skip: false
@@ -29,3 +42,33 @@ languages:
       space_before_separator: true
       alphabetical_order: false
       eol_at_eof: false
+- language: "xml"
+  language_version: "0"
+  skip: false
+  source_code:
+    excludes: []
+    includes: []
+    encoding: "UTF-8"
+    line_ending: "UNKNOWN"
+  processors:
+  - engine: "revelc"
+    parameters:
+      indentation_as_string: "    "
+      indentation_as_whitespaces: 4
+      space_before_separator: true
+      alphabetical_order: false
+      eol_at_eof: false
+  - engine: "ecryd_sortpom"
+    parameters:
+      indentation_as_string: "    "
+      indentation_as_whitespaces: 4
+      space_before_separator: true
+      alphabetical_order: false
+      eol_at_eof: false
+      expand_empty_elements: true
+    source_code:
+      excludes: []
+      includes:
+      - "pom.xml"
+      encoding: "UTF-8"
+      line_ending: "UNKNOWN"
