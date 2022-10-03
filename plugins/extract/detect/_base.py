@@ -1,178 +1,349 @@
 #!/usr/bin/env python3
 """ Base class for Face Detector plugins
-    Plugins should inherit from this class
 
-    See the override methods for which methods are
-    required.
+All Detector Plugins should inherit from this class.
+See the override methods for which methods are required.
 
-    For each source frame, the plugin must pass a dict to finalize containing:
-    {"filename": <filename of source frame>,
-     "image": <source image>,
-     "detected_faces": <list of dlib.rectangles>}
+The plugin will receive a :class:`~plugins.extract.pipeline.ExtractMedia` object.
+
+For each source frame, the plugin must pass a dict to finalize containing:
+
+>>> {'filename': <filename of source frame>,
+>>>  'detected_faces': <list of DetectedFace objects containing bounding box points}}
+
+To get a :class:`~lib.align.DetectedFace` object use the function:
+
+>>> face = self.to_detected_face(<face left>, <face top>, <face right>, <face bottom>)
+"""
+import cv2
+import numpy as np
+
+from tensorflow.python.framework import errors_impl as tf_errors  # pylint:disable=no-name-in-module # noqa
+
+from lib.align import DetectedFace
+from lib.utils import get_backend, FaceswapError
+
+from plugins.extract._base import Extractor, logger
+
+
+class Detector(Extractor):  # pylint:disable=abstract-method
+    """ Detector Object
+
+    Parent class for all Detector plugins
+
+    Parameters
+    ----------
+    git_model_id: int
+        The second digit in the github tag that identifies this model. See
+        https://github.com/deepfakes-models/faceswap-models for more information
+    model_filename: str
+        The name of the model file to be loaded
+    rotation: str, optional
+        Pass in a single number to use increments of that size up to 360, or pass in a ``list`` of
+        ``ints`` to enumerate exactly what angles to check. Can also pass in ``'on'`` to increment
+        at 90 degree intervals. Default: ``None``
+    min_size: int, optional
+        Filters out faces detected below this size. Length, in pixels across the diagonal of the
+        bounding box. Set to ``0`` for off. Default: ``0``
+
+    Other Parameters
+    ----------------
+    configfile: str, optional
+        Path to a custom configuration ``ini`` file. Default: Use system configfile
+
+    See Also
+    --------
+    plugins.extract.pipeline : The extraction pipeline for calling plugins
+    plugins.extract.detect : Detector plugins
+    plugins.extract._base : Parent class for all extraction plugins
+    plugins.extract.align._base : Aligner parent class for extraction plugins.
+    plugins.extract.mask._base : Masker parent class for extraction plugins.
     """
 
-import logging
-import os
-import traceback
-from io import StringIO
+    def __init__(self, git_model_id=None, model_filename=None,
+                 configfile=None, instance=0, rotation=None, min_size=0, **kwargs):
+        logger.debug("Initializing %s: (rotation: %s, min_size: %s)", self.__class__.__name__,
+                     rotation, min_size)
+        super().__init__(git_model_id,
+                         model_filename,
+                         configfile=configfile,
+                         instance=instance,
+                         **kwargs)
+        self.rotation = self._get_rotation_angles(rotation)
+        self.min_size = min_size
 
-import cv2
-import dlib
-from math import sqrt
+        self._plugin_type = "detect"
 
-from lib.gpu_stats import GPUStats
-from lib.utils import rotate_landmarks
-
-logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
-
-
-class Detector():
-    """ Detector object """
-    def __init__(self, loglevel, rotation=None):
-        logger.debug("Initializing %s: (rotation: %s)", self.__class__.__name__, rotation)
-        self.loglevel = loglevel
-        self.cachepath = os.path.join(os.path.dirname(__file__), ".cache")
-        self.rotation = self.get_rotation_angles(rotation)
-        self.parent_is_pool = False
-        self.init = None
-
-        # The input and output queues for the plugin.
-        # See lib.queue_manager.QueueManager for getting queues
-        self.queues = {"in": None, "out": None}
-
-        #  Path to model if required
-        self.model_path = self.set_model_path()
-
-        # Target image size for passing images through the detector
-        # Set to tuple of dimensions (x, y) or int of pixel count
-        self.target = None
-
-        # Approximate VRAM used for the set target. Used to calculate
-        # how many parallel processes / batches can be run.
-        # Be conservative to avoid OOM.
-        self.vram = None
-
-        # For detectors that support batching, this should be set to
-        # the calculated batch size that the amount of available VRAM
-        # will support. It is also used for holding the number of threads/
-        # processes for parallel processing plugins
-        self.batch_size = 1
         logger.debug("Initialized _base %s", self.__class__.__name__)
 
-    # <<< OVERRIDE METHODS >>> #
-    # These methods must be overriden when creating a plugin
-    @staticmethod
-    def set_model_path():
-        """ path to data file/models
-            override for specific detector """
-        raise NotImplementedError()
+    # <<< QUEUE METHODS >>> #
+    def get_batch(self, queue):
+        """ Get items for inputting to the detector plugin in batches
 
-    def initialize(self, *args, **kwargs):
-        """ Inititalize the detector
-            Tasks to be run before any detection is performed.
-            Override for specific detector """
-        logger_init = kwargs["log_init"]
-        log_queue = kwargs["log_queue"]
-        logger_init(self.loglevel, log_queue)
-        logger.debug("initialize %s (PID: %s, args: %s, kwargs: %s)",
-                     self.__class__.__name__, os.getpid(), args, kwargs)
-        self.init = kwargs.get("event", False)
-        self.queues["in"] = kwargs["in_queue"]
-        self.queues["out"] = kwargs["out_queue"]
+        Items are received as :class:`~plugins.extract.pipeline.ExtractMedia` objects and converted
+        to ``dict`` for internal processing.
 
-    def detect_faces(self, *args, **kwargs):
-        """ Detect faces in rgb image
-            Override for specific detector
-            Must return a list of dlib rects"""
-        try:
-            if not self.init:
-                self.initialize(*args, **kwargs)
-        except ValueError as err:
-            logger.error(err)
-            exit(1)
-        logger.debug("Detecting Faces (args: %s, kwargs: %s)", args, kwargs)
+        Items are returned from the ``queue`` in batches of
+        :attr:`~plugins.extract._base.Extractor.batchsize`
 
-    # <<< DETECTION WRAPPER >>> #
-    def run(self, *args, **kwargs):
-        """ Parent detect process.
-            This should always be called as the entry point so exceptions
-            are passed back to parent.
-            Do not override """
-        try:
-            self.detect_faces(*args, **kwargs)
-        except Exception:  # pylint: disable=broad-except
-            logger.error("Caught exception in child process: %s", os.getpid())
-            # Display traceback if in initialization stage 
-            if not self.init.is_set():
-                logger.exception("Traceback:")
-            tb_buffer = StringIO()
-            traceback.print_exc(file=tb_buffer)
-            exception = {"exception": (os.getpid(), tb_buffer)}
-            self.queues["out"].put(exception)
-            exit(1)
+        Remember to put ``'EOF'`` to the out queue after processing
+        the final batch
+
+        Outputs items in the following format. All lists are of length
+        :attr:`~plugins.extract._base.Extractor.batchsize`:
+
+        >>> {'filename': [<filenames of source frames>],
+        >>>  'image': <numpy.ndarray of images standardized for prediction>,
+        >>>  'scale': [<scaling factors for each image>],
+        >>>  'pad': [<padding for each image>],
+        >>>  'detected_faces': [[<lib.align.DetectedFace objects]]}
+
+        Parameters
+        ----------
+        queue : queue.Queue()
+            The ``queue`` that the batch will be fed from. This will be a queue that loads
+            images.
+
+        Returns
+        -------
+        exhausted, bool
+            ``True`` if queue is exhausted, ``False`` if not.
+        batch, dict
+            A dictionary of lists of :attr:`~plugins.extract._base.Extractor.batchsize`.
+        """
+        exhausted = False
+        batch = {}
+        for _ in range(self.batchsize):
+            item = self._get_item(queue)
+            if item == "EOF":
+                exhausted = True
+                break
+            batch.setdefault("filename", []).append(item.filename)
+            image, scale, pad = self._compile_detection_image(item)
+            batch.setdefault("image", []).append(image)
+            batch.setdefault("scale", []).append(scale)
+            batch.setdefault("pad", []).append(pad)
+
+        if batch:
+            batch["image"] = np.array(batch["image"], dtype="float32")
+            logger.trace("Returning batch: %s", {k: v.shape if isinstance(v, np.ndarray) else v
+                                                 for k, v in batch.items()})
+        else:
+            logger.trace(item)
+        return exhausted, batch
 
     # <<< FINALIZE METHODS>>> #
-    def finalize(self, output):
-        """ This should be called as the final task of each plugin
-            Performs fianl processing and puts to the out queue """
-        if isinstance(output, dict):
-            logger.trace("Item out: %s", {key: val
-                                          for key, val in output.items()
-                                          if key != "image"})
-        else:
-            logger.trace("Item out: %s", output)
-        self.queues["out"].put(output)
+    def finalize(self, batch):
+        """ Finalize the output from Detector
+
+        This should be called as the final task of each ``plugin``.
+
+        Parameters
+        ----------
+        batch : dict
+            The final ``dict`` from the `plugin` process. It must contain the keys  ``filename``,
+            ``faces``
+
+        Yields
+        ------
+        :class:`~plugins.extract.pipeline.ExtractMedia`
+            The :attr:`DetectedFaces` list will be populated for this class with the bounding boxes
+            for the detected faces found in the frame.
+        """
+        if not isinstance(batch, dict):
+            logger.trace("Item out: %s", batch)
+            return batch
+
+        logger.trace("Item out: %s", {k: v.shape if isinstance(v, np.ndarray) else v
+                                      for k, v in batch.items()})
+
+        batch_faces = [[self.to_detected_face(face[0], face[1], face[2], face[3])
+                        for face in faces]
+                       for faces in batch["prediction"]]
+        # Rotations
+        if any(m.any() for m in batch["rotmat"]) and any(batch_faces):
+            batch_faces = [[self._rotate_face(face, rotmat) if rotmat.any() else face
+                            for face in faces]
+                           for faces, rotmat in zip(batch_faces, batch["rotmat"])]
+
+        # Remove zero sized faces
+        batch_faces = self._remove_zero_sized_faces(batch_faces)
+
+        # Scale back out to original frame
+        batch["detected_faces"] = [[self.to_detected_face((face.left - pad[0]) / scale,
+                                                          (face.top - pad[1]) / scale,
+                                                          (face.right - pad[0]) / scale,
+                                                          (face.bottom - pad[1]) / scale)
+                                    for face in faces]
+                                   for scale, pad, faces in zip(batch["scale"],
+                                                                batch["pad"],
+                                                                batch_faces)]
+
+        if self.min_size > 0 and batch.get("detected_faces", None):
+            batch["detected_faces"] = self._filter_small_faces(batch["detected_faces"])
+
+        batch = self._dict_lists_to_list_dicts(batch)
+        for item in batch:
+            output = self._extract_media.pop(item["filename"])
+            output.add_detected_faces(item["detected_faces"])
+            logger.trace("final output: (filename: '%s', image shape: %s, detected_faces: %s, "
+                         "item: %s", output.filename, output.image_shape, output.detected_faces,
+                         output)
+            yield output
+
+    @staticmethod
+    def to_detected_face(left, top, right, bottom):
+        """ Return a :class:`~lib.align.DetectedFace` object for the bounding box """
+        return DetectedFace(left=int(round(left)),
+                            width=int(round(right - left)),
+                            top=int(round(top)),
+                            height=int(round(bottom - top)))
+
+    # <<< PROTECTED ACCESS METHODS >>> #
+    # <<< PREDICT WRAPPER >>> #
+    def _predict(self, batch):
+        """ Wrap models predict function in rotations """
+        batch["rotmat"] = [np.array([]) for _ in range(len(batch["feed"]))]
+        found_faces = [np.array([]) for _ in range(len(batch["feed"]))]
+        for angle in self.rotation:
+            # Rotate the batch and insert placeholders for already found faces
+            self._rotate_batch(batch, angle)
+            try:
+                batch = self.predict(batch)
+            except tf_errors.ResourceExhaustedError as err:
+                msg = ("You do not have enough GPU memory available to run detection at the "
+                       "selected batch size. You can try a number of things:"
+                       "\n1) Close any other application that is using your GPU (web browsers are "
+                       "particularly bad for this)."
+                       "\n2) Lower the batchsize (the amount of images fed into the model) by "
+                       "editing the plugin settings (GUI: Settings > Configure extract settings, "
+                       "CLI: Edit the file faceswap/config/extract.ini)."
+                       "\n3) Enable 'Single Process' mode.")
+                raise FaceswapError(msg) from err
+            except Exception as err:
+                if get_backend() == "amd":
+                    # pylint:disable=import-outside-toplevel
+                    from lib.plaidml_utils import is_plaidml_error
+                    if (is_plaidml_error(err) and (
+                            "CL_MEM_OBJECT_ALLOCATION_FAILURE" in str(err).upper() or
+                            "enough memory for the current schedule" in str(err).lower())):
+                        msg = ("You do not have enough GPU memory available to run detection at "
+                               "the selected batch size. You can try a number of things:"
+                               "\n1) Close any other application that is using your GPU (web "
+                               "browsers are particularly bad for this)."
+                               "\n2) Lower the batchsize (the amount of images fed into the "
+                               "model) by editing the plugin settings (GUI: Settings > Configure "
+                               "extract settings, CLI: Edit the file "
+                               "faceswap/config/extract.ini).")
+                        raise FaceswapError(msg) from err
+                raise
+
+            if angle != 0 and any([face.any() for face in batch["prediction"]]):
+                logger.verbose("found face(s) by rotating image %s degrees", angle)
+
+            found_faces = [face if not found.any() else found
+                           for face, found in zip(batch["prediction"], found_faces)]
+
+            if all([face.any() for face in found_faces]):
+                logger.trace("Faces found for all images")
+                break
+
+        batch["prediction"] = found_faces
+        logger.trace("detect_prediction output: (filenames: %s, prediction: %s, rotmat: %s)",
+                     batch["filename"], batch["prediction"], batch["rotmat"])
+        return batch
 
     # <<< DETECTION IMAGE COMPILATION METHODS >>> #
-    def compile_detection_image(self, image, is_square, scale_up):
-        """ Compile the detection image """
-        scale = self.set_scale(image, is_square=is_square, scale_up=scale_up)
-        return [self.set_detect_image(image, scale), scale]
+    def _compile_detection_image(self, item):
+        """ Compile the detection image for feeding into the model
 
-    def set_scale(self, image, is_square=False, scale_up=False):
+        Parameters
+        ----------
+        item: :class:`plugins.extract.pipeline.ExtractMedia`
+            The input item from the pipeline
+        """
+        image = item.get_image_copy(self.color_format)
+        scale = self._set_scale(item.image_size)
+        pad = self._set_padding(item.image_size, scale)
+
+        image = self._scale_image(image, item.image_size, scale)
+        image = self._pad_image(image)
+        logger.trace("compiled: (images shape: %s, scale: %s, pad: %s)", image.shape, scale, pad)
+        return image, scale, pad
+
+    def _set_scale(self, image_size):
         """ Set the scale factor for incoming image """
-        height, width = image.shape[:2]
-        if is_square:
-            if isinstance(self.target, int):
-                dims = (self.target ** 0.5, self.target ** 0.5)
-                self.target = dims
-            source = max(height, width)
-            target = max(self.target)
-        else:
-            if isinstance(self.target, tuple):
-                self.target = self.target[0] * self.target[1]
-            source = width * height
-            target = self.target
-
-        if scale_up or target < source:
-            scale = sqrt(target / source)
-        else:
-            scale = 1.0
+        scale = self.input_size / max(image_size)
         logger.trace("Detector scale: %s", scale)
-        
         return scale
 
-    def set_detect_image(self, input_image, scale):
-        """ Convert the image to RGB and scale """
-        # pylint: disable=no-member
-        image = input_image[:, :, ::-1].copy()
-        if scale == 1.0:
-            return image
+    def _set_padding(self, image_size, scale):
+        """ Set the image padding for non-square images """
+        pad_left = int(self.input_size - int(image_size[1] * scale)) // 2
+        pad_top = int(self.input_size - int(image_size[0] * scale)) // 2
+        return pad_left, pad_top
 
-        height, width = image.shape[:2]
-        interpln = cv2.INTER_LINEAR if scale > 1.0 else cv2.INTER_AREA
-        dims = (int(width * scale), int(height * scale))
-
-        if scale < 1.0:
-            logger.verbose("Resizing image from %sx%s to %s.",
-                           width, height, "x".join(str(i) for i in dims))
-
-        image = cv2.resize(image, dims, interpolation=interpln)
+    @staticmethod
+    def _scale_image(image, image_size, scale):
+        """ Scale the image and optional pad to given size """
+        interpln = cv2.INTER_CUBIC if scale > 1.0 else cv2.INTER_AREA
+        if scale != 1.0:
+            dims = (int(image_size[1] * scale), int(image_size[0] * scale))
+            logger.trace("Resizing detection image from %s to %s. Scale=%s",
+                         "x".join(str(i) for i in reversed(image_size)),
+                         "x".join(str(i) for i in dims), scale)
+            image = cv2.resize(image, dims, interpolation=interpln)
+        logger.trace("Resized image shape: %s", image.shape)
         return image
+
+    def _pad_image(self, image):
+        """ Pad a resized image to input size """
+        height, width = image.shape[:2]
+        if width < self.input_size or height < self.input_size:
+            pad_l = (self.input_size - width) // 2
+            pad_r = (self.input_size - width) - pad_l
+            pad_t = (self.input_size - height) // 2
+            pad_b = (self.input_size - height) - pad_t
+            image = cv2.copyMakeBorder(image,
+                                       pad_t,
+                                       pad_b,
+                                       pad_l,
+                                       pad_r,
+                                       cv2.BORDER_CONSTANT)
+        logger.trace("Padded image shape: %s", image.shape)
+        return image
+
+    # <<< FINALIZE METHODS >>> #
+    def _remove_zero_sized_faces(self, batch_faces):
+        """ Remove items from batch_faces where detected face is of zero size
+            or face falls entirely outside of image """
+        logger.trace("Input sizes: %s", [len(face) for face in batch_faces])
+        retval = [[face
+                   for face in faces
+                   if face.right > 0 and face.left < self.input_size
+                   and face.bottom > 0 and face.top < self.input_size]
+                  for faces in batch_faces]
+        logger.trace("Output sizes: %s", [len(face) for face in retval])
+        return retval
+
+    def _filter_small_faces(self, detected_faces):
+        """ Filter out any faces smaller than the min size threshold """
+        retval = []
+        for faces in detected_faces:
+            this_image = []
+            for face in faces:
+                face_size = (face.width ** 2 + face.height ** 2) ** 0.5
+                if face_size < self.min_size:
+                    logger.debug("Removing detected face: (face_size: %s, min_size: %s",
+                                 face_size, self.min_size)
+                    continue
+                this_image.append(face)
+            retval.append(this_image)
+        return retval
 
     # <<< IMAGE ROTATION METHODS >>> #
     @staticmethod
-    def get_rotation_angles(rotation):
+    def _get_rotation_angles(rotation):
         """ Set the rotation angles. Includes backwards compatibility for the
             'on' and 'off' options:
                 - 'on' - increment 90 degrees
@@ -189,7 +360,8 @@ class Detector():
             rotation_angles.extend(range(90, 360, 90))
         else:
             passed_angles = [int(angle)
-                             for angle in rotation.split(",")]
+                             for angle in rotation.split(",")
+                             if int(angle) != 0]
             if len(passed_angles) == 1:
                 rotation_step_size = passed_angles[0]
                 rotation_angles.extend(range(rotation_step_size,
@@ -201,115 +373,87 @@ class Detector():
         logger.debug("Rotation Angles: %s", rotation_angles)
         return rotation_angles
 
-    def rotate_image(self, image, angle):
-        """ Rotate the image by given angle and return
-            Image with rotation matrix """
+    def _rotate_batch(self, batch, angle):
+        """ Rotate images in a batch by given angle
+            if any faces have already been detected for a batch, store the existing rotation
+            matrix and replace the feed image with a placeholder """
         if angle == 0:
-            return image, None
-        return self.rotate_image_by_angle(image, angle)
+            # Set the initial batch so we always rotate from zero
+            batch["initial_feed"] = batch["feed"].copy()
+            return
+
+        retval = {}
+        for img, faces, rotmat in zip(batch["initial_feed"], batch["prediction"], batch["rotmat"]):
+            if faces.any():
+                image = np.zeros_like(img)
+                matrix = rotmat
+            else:
+                image, matrix = self._rotate_image_by_angle(img, angle)
+            retval.setdefault("feed", []).append(image)
+            retval.setdefault("rotmat", []).append(matrix)
+        batch["feed"] = np.array(retval["feed"], dtype="float32")
+        batch["rotmat"] = retval["rotmat"]
 
     @staticmethod
-    def rotate_rect(d_rect, rotation_matrix):
-        """ Rotate a dlib rect based on the rotation_matrix"""
-        logger.trace("Rotating d_rectangle")
-        d_rect = rotate_landmarks(d_rect, rotation_matrix)
-        return d_rect
+    def _rotate_face(face, rotation_matrix):
+        """ Rotates the detection bounding box around the given rotation matrix.
 
-    @staticmethod
-    def rotate_image_by_angle(image, angle,
-                              rotated_width=None, rotated_height=None):
+        Parameters
+        ----------
+        face: :class:`DetectedFace`
+            A :class:`DetectedFace` containing the `x`, `w`, `y`, `h` detection bounding box
+            points.
+        rotation_matrix: numpy.ndarray
+            The rotation matrix to rotate the given object by.
+
+        Returns
+        -------
+        :class:`DetectedFace`
+            The same class with the detection bounding box points rotated by the given matrix.
+        """
+        logger.trace("Rotating face: (face: %s, rotation_matrix: %s)", face, rotation_matrix)
+        bounding_box = [[face.left, face.top],
+                        [face.right, face.top],
+                        [face.right, face.bottom],
+                        [face.left, face.bottom]]
+        rotation_matrix = cv2.invertAffineTransform(rotation_matrix)
+
+        points = np.array(bounding_box, "int32")
+        points = np.expand_dims(points, axis=0)
+        transformed = cv2.transform(points, rotation_matrix).astype("int32")
+        rotated = transformed.squeeze()
+
+        # Bounding box should follow x, y planes, so get min/max for non-90 degree rotations
+        pt_x = min([pnt[0] for pnt in rotated])
+        pt_y = min([pnt[1] for pnt in rotated])
+        pt_x1 = max([pnt[0] for pnt in rotated])
+        pt_y1 = max([pnt[1] for pnt in rotated])
+        width = pt_x1 - pt_x
+        height = pt_y1 - pt_y
+
+        face.left = int(pt_x)
+        face.top = int(pt_y)
+        face.width = int(width)
+        face.height = int(height)
+        return face
+
+    def _rotate_image_by_angle(self, image, angle):
         """ Rotate an image by a given angle.
             From: https://stackoverflow.com/questions/22041699 """
 
-        logger.trace("Rotating image: (angle: %s, rotated_width: %s, rotated_height: %s)",
-                     angle, rotated_width, rotated_height)
+        logger.trace("Rotating image: (image: %s, angle: %s)", image.shape, angle)
+        channels_first = image.shape[0] <= 4
+        if channels_first:
+            image = np.moveaxis(image, 0, 2)
+
         height, width = image.shape[:2]
         image_center = (width/2, height/2)
-        rotation_matrix = cv2.getRotationMatrix2D(  # pylint: disable=no-member
-            image_center, -1.*angle, 1.)
-        if rotated_width is None or rotated_height is None:
-            abs_cos = abs(rotation_matrix[0, 0])
-            abs_sin = abs(rotation_matrix[0, 1])
-            if rotated_width is None:
-                rotated_width = int(height*abs_sin + width*abs_cos)
-            if rotated_height is None:
-                rotated_height = int(height*abs_cos + width*abs_sin)
-        rotation_matrix[0, 2] += rotated_width/2 - image_center[0]
-        rotation_matrix[1, 2] += rotated_height/2 - image_center[1]
+        rotation_matrix = cv2.getRotationMatrix2D(image_center, -1.*angle, 1.)
+        rotation_matrix[0, 2] += self.input_size / 2 - image_center[0]
+        rotation_matrix[1, 2] += self.input_size / 2 - image_center[1]
         logger.trace("Rotated image: (rotation_matrix: %s", rotation_matrix)
-        return (cv2.warpAffine(image,  # pylint: disable=no-member
-                               rotation_matrix,
-                               (rotated_width, rotated_height)),
-                rotation_matrix)
+        image = cv2.warpAffine(image, rotation_matrix, (self.input_size, self.input_size))
+        if channels_first:
+            image = np.moveaxis(image, 2, 0)
 
-    # << QUEUE METHODS >> #
-    def get_item(self):
-        """ Yield one item from the queue """
-        item = self.queues["in"].get()
-        if isinstance(item, dict):
-            logger.trace("Item in: %s", item["filename"])
-        else:
-            logger.trace("Item in: %s", item)
-        if item == "EOF":
-            logger.debug("In Queue Exhausted")
-            # Re-put EOF into queue for other threads
-            self.queues["in"].put(item)
-        return item
-
-    def get_batch(self):
-        """ Get items from the queue in batches of
-            self.batch_size
-
-            First item in output tuple indicates whether the
-            queue is exhausted.
-            Second item is the batch
-
-            Remember to put "EOF" to the out queue after processing
-            the final batch """
-        exhausted = False
-        batch = list()
-        for _ in range(self.batch_size):
-            item = self.get_item()
-            if item == "EOF":
-                exhausted = True
-                break
-            batch.append(item)
-        logger.trace("Returning batch size: %s", len(batch))
-        return (exhausted, batch)
-
-    # <<< DLIB RECTANGLE METHODS >>> #
-    @staticmethod
-    def is_mmod_rectangle(d_rectangle):
-        """ Return whether the passed in object is
-            a dlib.mmod_rectangle """
-        return isinstance(
-            d_rectangle,
-            dlib.mmod_rectangle)  # pylint: disable=c-extension-no-member
-
-    def convert_to_dlib_rectangle(self, d_rect):
-        """ Convert detected mmod_rects to dlib_rectangle """
-        if self.is_mmod_rectangle(d_rect):
-            return d_rect.rect
-        return d_rect
-
-    # <<< MISC METHODS >>> #
-    @staticmethod
-    def get_vram_free():
-        """ Return total free VRAM on largest card """
-        stats = GPUStats()
-        vram = stats.get_card_most_free()
-        logger.verbose("Using device %s with %sMB free of %sMB",
-                       vram["device"],
-                       int(vram["free"]),
-                       int(vram["total"]))
-        return int(vram["free"])
-
-    @staticmethod
-    def set_predetected(width, height):
-        """ Set a dlib rectangle for predetected faces """
-        # Predetected_face is used for sort tool.
-        # Landmarks should not be extracted again from predetected faces,
-        # because face data is lost, resulting in a large variance
-        # against extract from original image
-        logger.debug("Setting predetected face")
-        return [dlib.rectangle(0, 0, width, height)]  # pylint: disable=c-extension-no-member
+        return image, rotation_matrix
