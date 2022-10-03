@@ -296,29 +296,29 @@ def vis_of_vertices(vertices, triangles, h, w, depth_buffer = None):
     Returns:
         vertices_vis: nver. the visibility of each vertex
     '''
-    if depth_buffer == None:
+    if depth_buffer is None:
         depth_buffer = get_depth_buffer(vertices, triangles, h, w)
 
     vertices_vis = np.zeros(vertices.shape[1], dtype = bool)
-    
+
     depth_tmp = np.zeros_like(depth_buffer) - 99999
     for i in range(vertices.shape[1]):
         vertex = vertices[:, i]
 
         if np.floor(vertex[0]) < 0 or np.ceil(vertex[0]) > w-1 or np.floor(vertex[1]) < 0 or np.ceil(vertex[1]) > h-1:
             continue        
-        
+
         # bilinear interp 
         # ul = depth_buffer[int(np.floor(vertex[1])), int(np.floor(vertex[0]))]
         # ur = depth_buffer[int(np.floor(vertex[1])), int(np.ceil(vertex[0]))]
         # dl = depth_buffer[int(np.ceil(vertex[1])), int(np.floor(vertex[0]))]
         # dr = depth_buffer[int(np.ceil(vertex[1])), int(np.ceil(vertex[0]))]
-        
+
         # yd = vertex[1] - np.floor(vertex[1])
         # xd = vertex[0] - np.floor(vertex[0])
 
         # vertex_depth = ul*(1-xd)*(1-yd) + ur*xd*(1-yd) + dl*(1-xd)*yd + dr*xd*yd
-        
+
         # nearest
         px = int(np.round(vertex[0]))
         py = int(np.round(vertex[1]))
@@ -326,7 +326,7 @@ def vis_of_vertices(vertices, triangles, h, w, depth_buffer = None):
         # if (vertex[2] > depth_buffer[ul[0], ul[1]]) & (vertex[2] > depth_buffer[ur[0], ur[1]]) & (vertex[2] > depth_buffer[dl[0], dl[1]]) & (vertex[2] > depth_buffer[dr[0], dr[1]]):
         if vertex[2] < depth_tmp[py, px]:
             continue
-        
+
         # if vertex[2] > depth_buffer[py, px]:
         #     vertices_vis[i] = True
         #     depth_tmp[py, px] = vertex[2]

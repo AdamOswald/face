@@ -38,22 +38,25 @@ def plot_pose_box(image, P, kpt, color=(0, 255, 0), line_width=2):
     '''
     image = image.copy()
 
-    point_3d = []
     rear_size = 90
     rear_depth = 0
-    point_3d.append((-rear_size, -rear_size, rear_depth))
-    point_3d.append((-rear_size, rear_size, rear_depth))
-    point_3d.append((rear_size, rear_size, rear_depth))
-    point_3d.append((rear_size, -rear_size, rear_depth))
-    point_3d.append((-rear_size, -rear_size, rear_depth))
-
     front_size = 105
     front_depth = 110
-    point_3d.append((-front_size, -front_size, front_depth))
-    point_3d.append((-front_size, front_size, front_depth))
-    point_3d.append((front_size, front_size, front_depth))
-    point_3d.append((front_size, -front_size, front_depth))
-    point_3d.append((-front_size, -front_size, front_depth))
+    point_3d = [
+        (-rear_size, -rear_size, rear_depth),
+        (-rear_size, rear_size, rear_depth),
+        (rear_size, rear_size, rear_depth),
+        (rear_size, -rear_size, rear_depth),
+        (-rear_size, -rear_size, rear_depth),
+        *(
+            (-front_size, -front_size, front_depth),
+            (-front_size, front_size, front_depth),
+            (front_size, front_size, front_depth),
+            (front_size, -front_size, front_depth),
+            (-front_size, -front_size, front_depth),
+        ),
+    ]
+
     point_3d = np.array(point_3d, dtype=np.float).reshape(-1, 3)
 
     # Map to 2d image points

@@ -186,8 +186,7 @@ class BaseOptions:
                 modifiers.append("optimizer_G")
 
         self._parser = parser
-        final_opt = self._parser.parse_args()
-        return final_opt
+        return self._parser.parse_args()
 
     @staticmethod
     def _validate(opt):
@@ -276,15 +275,13 @@ def load(opt, json_file, user_overrides=True):
     # if the user specifies arguments on the command line, don't override these
     if user_overrides:
         user_args = filter(lambda a: a.startswith("--"), sys.argv[1:])
-        user_args = set(
-            [a.lstrip("-") for a in user_args]
-        )  # get rid of left dashes
+        user_args = {a.lstrip("-") for a in user_args}
         print("Not overriding:", user_args)
 
     # override default options with values in config file
     for k, v in args.items():
         # only override if not specified on the cmdline
-        if not user_overrides or (user_overrides and k not in user_args):
+        if not user_overrides or k not in user_args:
             setattr(opt, k, v)
     # but make sure the config file matches up
     opt.config_file = json_file

@@ -110,11 +110,11 @@ def find_valid_files(dir, extensions=None, max_dataset_size=float("inf")):
     if isinstance(extensions, str):
         extensions = [extensions]
     images = []
-    assert os.path.isdir(dir), "%s is not a valid directory" % dir
+    assert os.path.isdir(dir), f"{dir} is not a valid directory"
 
     for root, _, fnames in sorted(os.walk(dir, followlinks=True)):
         for fname in fnames:
-            if in_extensions(fname, extensions if extensions else IMG_EXTENSIONS):
+            if in_extensions(fname, extensions or IMG_EXTENSIONS):
                 path = os.path.join(root, fname)
                 images.append(path)
     return images[: min(max_dataset_size, len(images))]
@@ -135,7 +135,7 @@ def get_dir_file_extension(dir, check=5):
         for fname in fnames[:check]:
             ext = os.path.splitext(fname)[1]
             exts.append(ext)
-    if len(exts) == 0:
+    if not exts:
         raise ValueError(f"did not find any files under dir: {dir}")
     return Counter(exts).most_common(1)[0][0]
 
@@ -151,8 +151,7 @@ def remove_top_dir(dir, n=1):
 
     """
     parts = dir.split(os.path.sep)
-    top_removed = os.path.sep.join(parts[n:])
-    return top_removed
+    return os.path.sep.join(parts[n:])
 
 
 def remove_extension(fname):
@@ -176,10 +175,7 @@ def crop_tensors(*tensors, crop_bounds=((0, 0), (-1, -1))):
     Returns:
 
     """
-    ret = []
-    for t in tensors:
-        ret.append(crop_tensor(t, crop_bounds))
-
+    ret = [crop_tensor(t, crop_bounds) for t in tensors]
     return ret[0] if len(ret) == 1 else ret
 
 

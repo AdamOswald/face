@@ -28,16 +28,25 @@ class PRN:
         #---- load PRN 
         self.pos_predictor = PosPrediction(self.resolution_inp, self.resolution_op)
         prn_path = os.path.join(prefix, 'Data/net-data/256_256_resfcn256_weight')
-        if not os.path.isfile(prn_path + '.data-00000-of-00001'):
+        if not os.path.isfile(f'{prn_path}.data-00000-of-00001'):
             print("please download PRN trained model first.")
             exit()
         self.pos_predictor.restore(prn_path)
 
         # uv file
-        self.uv_kpt_ind = np.loadtxt(prefix + '/Data/uv-data/uv_kpt_ind.txt').astype(np.int32) # 2 x 68 get kpt
-        self.face_ind = np.loadtxt(prefix + '/Data/uv-data/face_ind.txt').astype(np.int32) # get valid vertices in the pos map
-        self.triangles = np.loadtxt(prefix + '/Data/uv-data/triangles.txt').astype(np.int32) # ntri x 3
-        
+        self.uv_kpt_ind = np.loadtxt(
+            f'{prefix}/Data/uv-data/uv_kpt_ind.txt'
+        ).astype(np.int32)
+
+        self.face_ind = np.loadtxt(f'{prefix}/Data/uv-data/face_ind.txt').astype(
+            np.int32
+        )
+
+        self.triangles = np.loadtxt(f'{prefix}/Data/uv-data/triangles.txt').astype(
+            np.int32
+        )
+
+
         self.uv_coords = self.generate_uv_coords()        
 
     def generate_uv_coords(self):
@@ -111,7 +120,7 @@ class PRN:
         src_pts = np.array([[center[0]-size/2, center[1]-size/2], [center[0] - size/2, center[1]+size/2], [center[0]+size/2, center[1]-size/2]])
         DST_PTS = np.array([[0,0], [0,self.resolution_inp - 1], [self.resolution_inp - 1, 0]])
         tform = estimate_transform('similarity', src_pts, DST_PTS)
-        
+
         image = image/255.
         cropped_image = warp(image, tform.inverse, output_shape=(self.resolution_inp, self.resolution_inp))
 
@@ -126,9 +135,7 @@ class PRN:
         cropped_vertices[2,:] = 1
         vertices = np.dot(np.linalg.inv(tform.params), cropped_vertices)
         vertices = np.vstack((vertices[:2,:], z))
-        pos = np.reshape(vertices.T, [self.resolution_op, self.resolution_op, 3])
-        
-        return pos
+        return np.reshape(vertices.T, [self.resolution_op, self.resolution_op, 3])
             
     def get_landmarks(self, pos):
         '''
@@ -137,8 +144,7 @@ class PRN:
         Returns:
             kpt: 68 3D landmarks. shape = (68, 3).
         '''
-        kpt = pos[self.uv_kpt_ind[1,:], self.uv_kpt_ind[0,:], :]
-        return kpt
+        return pos[self.uv_kpt_ind[1,:], self.uv_kpt_ind[0,:], :]
 
 
     def get_vertices(self, pos):
@@ -149,9 +155,7 @@ class PRN:
             vertices: the vertices(point cloud). shape = (num of points, 3). n is about 40K here.
         '''
         all_vertices = np.reshape(pos, [self.resolution_op**2, -1])
-        vertices = all_vertices[self.face_ind, :]
-
-        return vertices
+        return all_vertices[self.face_ind, :]
 
     def get_colors_from_texture(self, texture):
         '''
@@ -161,9 +165,7 @@ class PRN:
             colors: the corresponding colors of vertices. shape = (num of points, 3). n is 45128 here.
         '''
         all_colors = np.reshape(texture, [self.resolution_op**2, -1])
-        colors = all_colors[self.face_ind, :]
-
-        return colors
+        return all_colors[self.face_ind, :]
 
 
     def get_colors(self, image, vertices):
@@ -177,9 +179,7 @@ class PRN:
         vertices[:,0] = np.minimum(np.maximum(vertices[:,0], 0), w - 1)  # x
         vertices[:,1] = np.minimum(np.maximum(vertices[:,1], 0), h - 1)  # y
         ind = np.round(vertices).astype(np.int32)
-        colors = image[ind[:,1], ind[:,0], :] # n x 3
-
-        return colors
+        return image[ind[:,1], ind[:,0], :]
 
 
 

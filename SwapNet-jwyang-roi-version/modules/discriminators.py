@@ -38,9 +38,7 @@ class Discriminator(nn.Module):
     def forward(self, input):
         out = self.model(input)
         out = out.view(out.shape[0], -1)
-        validity = self.adv_layer(out)
-
-        return validity
+        return self.adv_layer(out)
 
 def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal',
              init_gain=0.02, gpu_ids=[]):
@@ -84,7 +82,9 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
         net = PixelDiscriminator(input_nc, ndf, norm_layer=norm_layer)
     else:
         raise NotImplementedError(
-            'Discriminator model name [%s] is not recognized' % netD)
+            f'Discriminator model name [{netD}] is not recognized'
+        )
+
     return net
 
 

@@ -205,10 +205,7 @@ class DepthwiseConv2D(Conv2D):
         if len(input_shape) < 4:
             raise ValueError('Inputs to `DepthwiseConv2D` should have rank 4. '
                              'Received input shape:', str(input_shape))
-        if self.data_format == 'channels_first':
-            channel_axis = 1
-        else:
-            channel_axis = 3
+        channel_axis = 1 if self.data_format == 'channels_first' else 3
         if input_shape[channel_axis] is None:
             raise ValueError('The channel dimension of the inputs to '
                              '`DepthwiseConv2D` '
@@ -253,10 +250,7 @@ class DepthwiseConv2D(Conv2D):
                 self.bias,
                 data_format=self.data_format)
 
-        if self.activation is not None:
-            return self.activation(outputs)
-
-        return outputs
+        return self.activation(outputs) if self.activation is not None else outputs
 
     def compute_output_shape(self, input_shape):
         if self.data_format == 'channels_first':
@@ -393,8 +387,6 @@ def MobileNet(input_shape=None,
     else:
         row_axis, col_axis = (1, 2)
     rows = input_shape[row_axis]
-    cols = input_shape[col_axis]
-
     if weights == 'imagenet':
         if depth_multiplier != 1:
             raise ValueError('If imagenet weights are being loaded, '
@@ -404,6 +396,8 @@ def MobileNet(input_shape=None,
             raise ValueError('If imagenet weights are being loaded, '
                              'alpha can be one of'
                              '`0.25`, `0.50`, `0.75` or `1.0` only.')
+
+        cols = input_shape[col_axis]
 
         if rows != cols or rows not in [128, 160, 192, 224]:
             raise ValueError('If imagenet weights are being loaded, '
@@ -429,10 +423,11 @@ def MobileNet(input_shape=None,
     if input_tensor is None:
         img_input = Input(shape=input_shape)
     else:
-        if not K.is_keras_tensor(input_tensor):
-            img_input = Input(tensor=input_tensor, shape=input_shape)
-        else:
-            img_input = input_tensor
+        img_input = (
+            input_tensor
+            if K.is_keras_tensor(input_tensor)
+            else Input(tensor=input_tensor, shape=input_shape)
+        )
 
     x = _conv_block(img_input, 32, alpha, strides=(2, 2))
     x = _depthwise_conv_block(x, 64, alpha, depth_multiplier, block_id=1)
@@ -458,10 +453,11 @@ def MobileNet(input_shape=None,
     x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13)
 
     if include_top:
-        if K.image_data_format() == 'channels_first':
-            shape = (int(1024 * alpha), 1, 1)
-        else:
-            shape = (1, 1, int(1024 * alpha))
+        shape = (
+            (int(1024 * alpha), 1, 1)
+            if K.image_data_format() == 'channels_first'
+            else (1, 1, int(1024 * alpha))
+        )
 
         x = GlobalAveragePooling2D()(x)
         x = Reshape(shape, name='reshape_1')(x)
@@ -470,19 +466,14 @@ def MobileNet(input_shape=None,
                    padding='same', name='conv_preds')(x)
         x = Activation('softmax', name='act_softmax')(x)
         x = Reshape((classes,), name='reshape_2')(x)
-    else:
-        if pooling == 'avg':
-            x = GlobalAveragePooling2D()(x)
-        elif pooling == 'max':
-            x = GlobalMaxPooling2D()(x)
+    elif pooling == 'avg':
+        x = GlobalAveragePooling2D()(x)
+    elif pooling == 'max':
+        x = GlobalMaxPooling2D()(x)
 
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
-    if input_tensor is not None:
-        inputs = get_source_inputs(input_tensor)
-    else:
-        inputs = img_input
-
+    inputs = img_input if input_tensor is None else get_source_inputs(input_tensor)
     # Create model.
     model = Model(inputs, x, name='mobilenet_%0.2f_%s' % (alpha, rows))
 
@@ -491,27 +482,23 @@ def MobileNet(input_shape=None,
         if K.image_data_format() == 'channels_first':
             raise ValueError('Weights for "channels_last" format '
                              'are not available.')
-        if alpha == 1.0:
-            alpha_text = '1_0'
+        if alpha == 0.50:
+            alpha_text = '5_0'
         elif alpha == 0.75:
             alpha_text = '7_5'
-        elif alpha == 0.50:
-            alpha_text = '5_0'
+        elif alpha == 1.0:
+            alpha_text = '1_0'
         else:
             alpha_text = '2_5'
 
         if include_top:
             model_name = 'mobilenet_%s_%d_tf.h5' % (alpha_text, rows)
-            weigh_path = BASE_WEIGHT_PATH + model_name
-            weights_path = get_file(model_name,
-                                    weigh_path,
-                                    cache_subdir='models')
         else:
             model_name = 'mobilenet_%s_%d_tf_no_top.h5' % (alpha_text, rows)
-            weigh_path = BASE_WEIGHT_PATH + model_name
-            weights_path = get_file(model_name,
-                                    weigh_path,
-                                    cache_subdir='models')
+        weigh_path = BASE_WEIGHT_PATH + model_name
+        weights_path = get_file(model_name,
+                                weigh_path,
+                                cache_subdir='models')
         model.load_weights(weights_path)
 
     if old_data_format:

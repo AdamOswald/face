@@ -69,7 +69,7 @@ class TextureModel(BaseGAN):
                 use_style=opt.lambda_style != 0).to(self.device)
 
             for loss in ["l1", "content", "style"]:
-                if getattr(opt, "lambda_" + loss) != 0:
+                if getattr(opt, f"lambda_{loss}") != 0:
                     self.loss_names.append(f"G_{loss}")
 
     def compute_visuals(self):
@@ -108,7 +108,7 @@ class TextureModel(BaseGAN):
                 norm_type=self.opt.norm,
             )
         else:
-            raise ValueError("Cannot find implementation for " + self.opt.netG)
+            raise ValueError(f"Cannot find implementation for {self.opt.netG}")
 
     def set_input(self, input):
         self.textures = input["input_textures"].to(self.device)

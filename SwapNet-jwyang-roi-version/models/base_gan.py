@@ -153,7 +153,7 @@ class BaseGAN(BaseModel, ABC):
             self.model_names.append("discriminator")
 
             # setup GAN loss
-            use_smooth = True if opt.gan_label_mode == "smooth" else False
+            use_smooth = opt.gan_label_mode == "smooth"
             self.criterion_GAN = modules.loss.GANLoss(
                 opt.gan_mode, smooth_labels=use_smooth
             ).to(self.device)

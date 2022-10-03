@@ -166,18 +166,15 @@ def _run_texture():
     """
     texture_out, webpage = _setup(TEXTURE_SUBDIR, create_webpage=True)
 
-    if opt.warp_checkpoint:  # if intermediate, cloth dir is the warped cloths
-        cloth_dir = get_out_dir(WARP_SUBDIR)
-    else:  # otherwise if texture checkpoint alone, use what the user specified
-        cloth_dir = opt.cloth_dir
-
+    cloth_dir = get_out_dir(WARP_SUBDIR) if opt.warp_checkpoint else opt.cloth_dir
     print(f"Rebuilding texture from {opt.texture_checkpoint}")
     texture_model, texture_dataset = _rebuild_from_checkpoint(
         opt.texture_checkpoint,
-        same_crop_load_size=True if opt.warp_checkpoint else False,
+        same_crop_load_size=bool(opt.warp_checkpoint),
         texture_dir=opt.texture_dir,
         cloth_dir=cloth_dir,
     )
+
 
     print(f"Texturing cloth segmentations in {cloth_dir}...")
     try:

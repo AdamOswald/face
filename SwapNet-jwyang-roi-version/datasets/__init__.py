@@ -13,7 +13,7 @@ def find_dataset_using_name(dataset_name):
     be instantiated. It has to be a subclass of BaseDataset,
     and it is case-insensitive.
     """
-    dataset_filename = "datasets." + dataset_name + "_dataset"
+    dataset_filename = f"datasets.{dataset_name}_dataset"
     datasetlib = importlib.import_module(dataset_filename)
 
     dataset = None
@@ -46,8 +46,7 @@ def create_dataset(opt, **ds_kwargs):
         >>> from datasets import create_dataset
         >>> dataset = create_dataset(opt)
     """
-    data_loader = CappedDataLoader(opt, **ds_kwargs)
-    return data_loader
+    return CappedDataLoader(opt, **ds_kwargs)
 
 
 class CappedDataLoader:
@@ -61,7 +60,7 @@ class CappedDataLoader:
         Step 2: create a multi-threaded data loader.
         """
         self.opt = opt
-        dname = opt.dataset if opt.dataset else opt.model
+        dname = opt.dataset or opt.model
         print(f"Creating dataset {dname}...", end=" ")
         dataset_class = find_dataset_using_name(dname)
         self.dataset = dataset_class(opt, **ds_kwargs)

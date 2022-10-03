@@ -6,7 +6,7 @@ def get_visibility(vertices, triangles, h, w):
     triangles = triangles.T
     vertices_vis = vis_of_vertices(vertices.T, triangles, h, w)
     vertices_vis = vertices_vis.astype(bool)
-    for k in range(2):
+    for _ in range(2):
         tri_vis = vertices_vis[triangles[0,:]] | vertices_vis[triangles[1,:]] | vertices_vis[triangles[2,:]]
         ind = triangles[:, tri_vis]
         vertices_vis[ind] = True

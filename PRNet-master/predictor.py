@@ -31,11 +31,11 @@ class resfcn256(object):
         with tf.variable_scope(self.name) as scope:
             with arg_scope([tcl.batch_norm], is_training=is_training, scale=True):
                 with arg_scope([tcl.conv2d, tcl.conv2d_transpose], activation_fn=tf.nn.relu, 
-                                     normalizer_fn=tcl.batch_norm, 
-                                     biases_initializer=None, 
-                                     padding='SAME',
-                                     weights_regularizer=tcl.l2_regularizer(0.0002)):
-                    size = 16  
+                                                 normalizer_fn=tcl.batch_norm, 
+                                                 biases_initializer=None, 
+                                                 padding='SAME',
+                                                 weights_regularizer=tcl.l2_regularizer(0.0002)):
+                    size = 16
                     # x: s x s x 3
                     se = tcl.conv2d(x, num_outputs=size, kernel_size=4, stride=1) # 256 x 256 x 16
                     se = resBlock(se, num_outputs=size * 2, kernel_size=4, stride=2) # 128 x 128 x 32
@@ -59,7 +59,7 @@ class resfcn256(object):
                     pd = tcl.conv2d_transpose(pd, size * 4, 4, stride=2) # 64 x 64 x 64 
                     pd = tcl.conv2d_transpose(pd, size * 4, 4, stride=1) # 64 x 64 x 64 
                     pd = tcl.conv2d_transpose(pd, size * 4, 4, stride=1) # 64 x 64 x 64 
-                    
+
                     pd = tcl.conv2d_transpose(pd, size * 2, 4, stride=2) # 128 x 128 x 32
                     pd = tcl.conv2d_transpose(pd, size * 2, 4, stride=1) # 128 x 128 x 32
                     pd = tcl.conv2d_transpose(pd, size, 4, stride=2) # 256 x 256 x 16
@@ -67,9 +67,7 @@ class resfcn256(object):
 
                     pd = tcl.conv2d_transpose(pd, 3, 4, stride=1) # 256 x 256 x 3
                     pd = tcl.conv2d_transpose(pd, 3, 4, stride=1) # 256 x 256 x 3
-                    pos = tcl.conv2d_transpose(pd, 3, 4, stride=1, activation_fn = tf.nn.sigmoid)#, padding='SAME', weights_initializer=tf.random_normal_initializer(0, 0.02))
-                                
-                    return pos
+                    return tcl.conv2d_transpose(pd, 3, 4, stride=1, activation_fn = tf.nn.sigmoid)
     @property
     def vars(self):
         return [var for var in tf.global_variables() if self.name in var.name]

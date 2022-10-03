@@ -75,10 +75,11 @@ def MusicTaggerCRNN(weights='msd', input_tensor=None,
     if input_tensor is None:
         melgram_input = Input(shape=input_shape)
     else:
-        if not K.is_keras_tensor(input_tensor):
-            melgram_input = Input(tensor=input_tensor, shape=input_shape)
-        else:
-            melgram_input = input_tensor
+        melgram_input = (
+            input_tensor
+            if K.is_keras_tensor(input_tensor)
+            else Input(tensor=input_tensor, shape=input_shape)
+        )
 
     # Determine input axis
     if K.image_dim_ordering() == 'th':
@@ -132,9 +133,7 @@ def MusicTaggerCRNN(weights='msd', input_tensor=None,
 
     # Create model
     model = Model(melgram_input, x)
-    if weights is None:
-        return model
-    else:
+    if weights is not None:
         # Load weights
         if K.image_dim_ordering() == 'tf':
             weights_path = get_file('music_tagger_crnn_weights_tf_kernels_tf_dim_ordering.h5',
@@ -147,7 +146,7 @@ def MusicTaggerCRNN(weights='msd', input_tensor=None,
         model.load_weights(weights_path, by_name=True)
         if K.backend() == 'theano':
             convert_all_kernels_in_model(model)
-        return model
+    return model
 
 
 if __name__ == '__main__':

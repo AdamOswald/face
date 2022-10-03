@@ -136,10 +136,11 @@ def Xception(include_top=True, weights='imagenet',
     if input_tensor is None:
         img_input = Input(shape=input_shape)
     else:
-        if not K.is_keras_tensor(input_tensor):
-            img_input = Input(tensor=input_tensor, shape=input_shape)
-        else:
-            img_input = input_tensor
+        img_input = (
+            input_tensor
+            if K.is_keras_tensor(input_tensor)
+            else Input(tensor=input_tensor, shape=input_shape)
+        )
 
     x = Conv2D(32, (3, 3), strides=(2, 2), use_bias=False, name='block1_conv1')(img_input)
     x = BatchNormalization(name='block1_conv1_bn')(x)
@@ -191,17 +192,38 @@ def Xception(include_top=True, weights='imagenet',
 
     for i in range(8):
         residual = x
-        prefix = 'block' + str(i + 5)
+        prefix = f'block{str(i + 5)}'
 
-        x = Activation('relu', name=prefix + '_sepconv1_act')(x)
-        x = SeparableConv2D(728, (3, 3), padding='same', use_bias=False, name=prefix + '_sepconv1')(x)
-        x = BatchNormalization(name=prefix + '_sepconv1_bn')(x)
-        x = Activation('relu', name=prefix + '_sepconv2_act')(x)
-        x = SeparableConv2D(728, (3, 3), padding='same', use_bias=False, name=prefix + '_sepconv2')(x)
-        x = BatchNormalization(name=prefix + '_sepconv2_bn')(x)
-        x = Activation('relu', name=prefix + '_sepconv3_act')(x)
-        x = SeparableConv2D(728, (3, 3), padding='same', use_bias=False, name=prefix + '_sepconv3')(x)
-        x = BatchNormalization(name=prefix + '_sepconv3_bn')(x)
+        x = Activation('relu', name=f'{prefix}_sepconv1_act')(x)
+        x = SeparableConv2D(
+            728,
+            (3, 3),
+            padding='same',
+            use_bias=False,
+            name=f'{prefix}_sepconv1',
+        )(x)
+
+        x = BatchNormalization(name=f'{prefix}_sepconv1_bn')(x)
+        x = Activation('relu', name=f'{prefix}_sepconv2_act')(x)
+        x = SeparableConv2D(
+            728,
+            (3, 3),
+            padding='same',
+            use_bias=False,
+            name=f'{prefix}_sepconv2',
+        )(x)
+
+        x = BatchNormalization(name=f'{prefix}_sepconv2_bn')(x)
+        x = Activation('relu', name=f'{prefix}_sepconv3_act')(x)
+        x = SeparableConv2D(
+            728,
+            (3, 3),
+            padding='same',
+            use_bias=False,
+            name=f'{prefix}_sepconv3',
+        )(x)
+
+        x = BatchNormalization(name=f'{prefix}_sepconv3_bn')(x)
 
         x = layers.add([x, residual])
 
@@ -230,18 +252,14 @@ def Xception(include_top=True, weights='imagenet',
     if include_top:
         x = GlobalAveragePooling2D(name='avg_pool')(x)
         x = Dense(classes, activation='softmax', name='predictions')(x)
-    else:
-        if pooling == 'avg':
-            x = GlobalAveragePooling2D()(x)
-        elif pooling == 'max':
-            x = GlobalMaxPooling2D()(x)
+    elif pooling == 'avg':
+        x = GlobalAveragePooling2D()(x)
+    elif pooling == 'max':
+        x = GlobalMaxPooling2D()(x)
 
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
-    if input_tensor is not None:
-        inputs = get_source_inputs(input_tensor)
-    else:
-        inputs = img_input
+    inputs = img_input if input_tensor is None else get_source_inputs(input_tensor)
     # Create model.
     model = Model(inputs, x, name='xception')
 
