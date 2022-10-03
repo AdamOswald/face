@@ -1,21 +1,31 @@
 #!/usr/bin python3
 """ Utilities available across all scripts """
 
-import importlib
 import json
 import logging
 import os
 import sys
+import tkinter as tk
 import urllib
 import warnings
 import zipfile
 
-from pathlib import Path
 from re import finditer
 from multiprocessing import current_process
 from socket import timeout as socket_timeout, error as socket_error
+from time import time
+from typing import cast, Dict, List, Optional, Union, TYPE_CHECKING
 
+import numpy as np
 from tqdm import tqdm
+
+if sys.version_info < (3, 8):
+    from typing_extensions import get_args, Literal
+else:
+    from typing import get_args, Literal
+
+if TYPE_CHECKING:
+    from http.client import HTTPResponse
 
 # Global variables
 _image_extensions = [  # pylint:disable=invalid-name
@@ -23,6 +33,8 @@ _image_extensions = [  # pylint:disable=invalid-name
 _video_extensions = [  # pylint:disable=invalid-name
     ".avi", ".flv", ".mkv", ".mov", ".mp4", ".mpeg", ".mpg", ".webm", ".wmv",
     ".ts", ".vob"]
+_TF_VERS = None
+ValidBackends = Literal["amd", "nvidia", "cpu", "apple_silicon"]
 
 
 class _Backend():  # pylint:disable=too-few-public-methods
@@ -30,13 +42,14 @@ class _Backend():  # pylint:disable=too-few-public-methods
     Variable.
 
     If file doesn't exist and a variable hasn't been set, create the config file. """
-    def __init__(self):
-        self._backends = {"1": "amd", "2": "cpu", "3": "nvidia"}
+    def __init__(self) -> None:
+        self._backends = {"1": "amd", "2": "cpu", "3": "nvidia", "4": "apple_silicon"}
+        self._valid_backends = list(self._backends.values())
         self._config_file = self._get_config_file()
         self.backend = self._get_backend()
 
     @classmethod
-    def _get_config_file(cls):
+    def _get_config_file(cls) -> str:
         """ Obtain the location of the main Faceswap configuration file.
 
         Returns
@@ -48,7 +61,7 @@ class _Backend():  # pylint:disable=too-few-public-methods
         config_file = os.path.join(pypath, "config", ".faceswap")
         return config_file
 
-    def _get_backend(self):
+    def _get_backend(self) -> ValidBackends:
         """ Return the backend from either the `FACESWAP_BACKEND` Environment Variable or from
         the :file:`config/.faceswap` configuration file. If neither of these exist, prompt the user
         to select a backend.
@@ -60,9 +73,10 @@ class _Backend():  # pylint:disable=too-few-public-methods
         """
         # Check if environment variable is set, if so use that
         if "FACESWAP_BACKEND" in os.environ:
-            fs_backend = os.environ["FACESWAP_BACKEND"].lower()
-            print("Setting Faceswap backend from environment variable to "
-                  "{}".format(fs_backend.upper()))
+            fs_backend = cast(ValidBackends, os.environ["FACESWAP_BACKEND"].lower())
+            assert fs_backend in get_args(ValidBackends), (
+                f"Faceswap backend must be one of {get_args(ValidBackends)}")
+            print(f"Setting Faceswap backend from environment variable to {fs_backend.upper()}")
             return fs_backend
         # Intercept for sphinx docs build
         if sys.argv[0].endswith("sphinx-build"):
@@ -71,20 +85,20 @@ class _Backend():  # pylint:disable=too-few-public-methods
             self._configure_backend()
         while True:
             try:
-                with open(self._config_file, "r") as cnf:
+                with open(self._config_file, "r", encoding="utf8") as cnf:
                     config = json.load(cnf)
                 break
             except json.decoder.JSONDecodeError:
                 self._configure_backend()
                 continue
-        fs_backend = config.get("backend", None)
-        if fs_backend is None or fs_backend.lower() not in self._backends.values():
+        fs_backend = config.get("backend", "").lower()
+        if not fs_backend or fs_backend not in self._backends.values():
             fs_backend = self._configure_backend()
         if current_process().name == "MainProcess":
-            print("Setting Faceswap backend to {}".format(fs_backend.upper()))
-        return fs_backend.lower()
+            print(f"Setting Faceswap backend to {fs_backend.upper()}")
+        return fs_backend
 
-    def _configure_backend(self):
+    def _configure_backend(self) -> ValidBackends:
         """ Get user input to select the backend that Faceswap should use.
 
         Returns
@@ -94,23 +108,23 @@ class _Backend():  # pylint:disable=too-few-public-methods
         """
         print("First time configuration. Please select the required backend")
         while True:
-            selection = input("1: AMD, 2: CPU, 3: NVIDIA: ")
-            if selection not in ("1", "2", "3"):
-                print("'{}' is not a valid selection. Please try again".format(selection))
+            selection = input("1: AMD, 2: CPU, 3: NVIDIA, 4: APPLE SILICON: ")
+            if selection not in ("1", "2", "3", "4"):
+                print(f"'{selection}' is not a valid selection. Please try again")
                 continue
             break
-        fs_backend = self._backends[selection].lower()
+        fs_backend = cast(ValidBackends, self._backends[selection].lower())
         config = {"backend": fs_backend}
-        with open(self._config_file, "w") as cnf:
+        with open(self._config_file, "w", encoding="utf8") as cnf:
             json.dump(config, cnf)
-        print("Faceswap config written to: {}".format(self._config_file))
+        print(f"Faceswap config written to: {self._config_file}")
         return fs_backend
 
 
-_FS_BACKEND = _Backend().backend
+_FS_BACKEND: ValidBackends = _Backend().backend
 
 
-def get_backend():
+def get_backend() -> ValidBackends:
     """ Get the backend that Faceswap is currently configured to use.
 
     Returns
@@ -121,19 +135,35 @@ def get_backend():
     return _FS_BACKEND
 
 
-def set_backend(backend):
+def set_backend(backend: str) -> None:
     """ Override the configured backend with the given backend.
 
     Parameters
     ----------
-    backend: ["amd", "cpu", "nvidia"]
+    backend: ["amd", "cpu", "nvidia", "apple_silicon"]
         The backend to set faceswap to
     """
     global _FS_BACKEND  # pylint:disable=global-statement
-    _FS_BACKEND = backend.lower()
+    backend = cast(ValidBackends, backend.lower())
+    _FS_BACKEND = backend
 
 
-def get_folder(path, make_folder=True):
+def get_tf_version() -> float:
+    """ Obtain the major.minor version of currently installed Tensorflow.
+
+    Returns
+    -------
+    float
+        The currently installed tensorflow version
+    """
+    global _TF_VERS  # pylint:disable=global-statement
+    if _TF_VERS is None:
+        import tensorflow as tf  # pylint:disable=import-outside-toplevel
+        _TF_VERS = float(".".join(tf.__version__.split(".")[:2]))  # pylint:disable=no-member
+    return _TF_VERS
+
+
+def get_folder(path: str, make_folder: bool = True) -> str:
     """ Return a path to a folder, creating it if it doesn't exist
 
     Parameters
@@ -146,28 +176,29 @@ def get_folder(path, make_folder=True):
 
     Returns
     -------
-    :class:`pathlib.Path` or `None`
+    str or `None`
         The path to the requested folder. If `make_folder` is set to ``False`` and the requested
         path does not exist, then ``None`` is returned
     """
     logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
     logger.debug("Requested path: '%s'", path)
-    output_dir = Path(path)
-    if not make_folder and not output_dir.exists():
+    if not make_folder and not os.path.isdir(path):
         logger.debug("%s does not exist", path)
-        return None
-    output_dir.mkdir(parents=True, exist_ok=True)
-    logger.debug("Returning: '%s'", output_dir)
-    return output_dir
+        return ""
+    os.makedirs(path, exist_ok=True)
+    logger.debug("Returning: '%s'", path)
+    return path
 
 
-def get_image_paths(directory):
+def get_image_paths(directory: str, extension: Optional[str] = None) -> List[str]:
     """ Obtain a list of full paths that reside within a folder.
 
     Parameters
     ----------
     directory: str
         The folder that contains the images to be returned
+    extension: str
+        The specific image extensions that should be returned
 
     Returns
     -------
@@ -175,8 +206,8 @@ def get_image_paths(directory):
         The list of full paths to the images contained within the given folder
     """
     logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
-    image_extensions = _image_extensions
-    dir_contents = list()
+    image_extensions = _image_extensions if extension is None else [extension]
+    dir_contents = []
 
     if not os.path.exists(directory):
         logger.debug("Creating folder: '%s'", directory)
@@ -184,19 +215,31 @@ def get_image_paths(directory):
 
     dir_scanned = sorted(os.scandir(directory), key=lambda x: x.name)
     logger.debug("Scanned Folder contains %s files", len(dir_scanned))
-    logger.trace("Scanned Folder Contents: %s", dir_scanned)
+    logger.trace("Scanned Folder Contents: %s", dir_scanned)  # type:ignore
 
     for chkfile in dir_scanned:
-        if any([chkfile.name.lower().endswith(ext)
-                for ext in image_extensions]):
-            logger.trace("Adding '%s' to image list", chkfile.path)
+        if any(chkfile.name.lower().endswith(ext) for ext in image_extensions):
+            logger.trace("Adding '%s' to image list", chkfile.path)  # type:ignore
             dir_contents.append(chkfile.path)
 
     logger.debug("Returning %s images", len(dir_contents))
     return dir_contents
 
 
-def convert_to_secs(*args):
+def get_dpi() -> float:
+    """ Obtain the DPI of the running screen.
+
+    Returns
+    -------
+    int
+        The obtain dots per inch of the running monitor
+    """
+    root = tk.Tk()
+    dpi = root.winfo_fpixels('1i')
+    return float(dpi)
+
+
+def convert_to_secs(*args: int) -> int:
     """ Convert a time to seconds.
 
     Parameters
@@ -219,11 +262,12 @@ def convert_to_secs(*args):
         retval = 60 * float(args[0]) + float(args[1])
     elif len(args) == 3:
         retval = 3600 * float(args[0]) + 60 * float(args[1]) + float(args[2])
+    retval = int(retval)
     logger.debug("to secs: %s", retval)
     return retval
 
 
-def full_path_split(path):
+def full_path_split(path: str) -> List[str]:
     """ Split a full path to a location into all of it's separate components.
 
     Parameters
@@ -243,7 +287,7 @@ def full_path_split(path):
     >>> ["foo", "baz", "bar"]
     """
     logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
-    allparts = list()
+    allparts: List[str] = []
     while True:
         parts = os.path.split(path)
         if parts[0] == path:   # sentinel for absolute paths
@@ -254,11 +298,11 @@ def full_path_split(path):
             break
         path = parts[0]
         allparts.insert(0, parts[1])
-    logger.trace("path: %s, allparts: %s", path, allparts)
+    logger.trace("path: %s, allparts: %s", path, allparts)  # type:ignore
     return allparts
 
 
-def set_system_verbosity(log_level):
+def set_system_verbosity(log_level: str):
     """ Set the verbosity level of tensorflow and suppresses future and deprecation warnings from
     any modules
 
@@ -278,7 +322,7 @@ def set_system_verbosity(log_level):
     logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
     from lib.logger import get_loglevel  # pylint:disable=import-outside-toplevel
     numeric_level = get_loglevel(log_level)
-    log_level = "2" if numeric_level > 15 else "0"
+    log_level = "3" if numeric_level > 15 else "0"
     logger.debug("System Verbosity level: %s", log_level)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = log_level
     if log_level != '0':
@@ -286,7 +330,7 @@ def set_system_verbosity(log_level):
             warnings.simplefilter(action='ignore', category=warncat)
 
 
-def deprecation_warning(function, additional_info=None):
+def deprecation_warning(function: str, additional_info: Optional[str] = None) -> None:
     """ Log at warning level that a function will be removed in a future update.
 
     Parameters
@@ -298,13 +342,13 @@ def deprecation_warning(function, additional_info=None):
     """
     logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
     logger.debug("func_name: %s, additional_info: %s", function, additional_info)
-    msg = "{}  has been deprecated and will be removed from a future update.".format(function)
+    msg = f"{function}  has been deprecated and will be removed from a future update."
     if additional_info is not None:
-        msg += " {}".format(additional_info)
+        msg += f" {additional_info}"
     logger.warning(msg)
 
 
-def camel_case_split(identifier):
+def camel_case_split(identifier: str) -> List[str]:
     """ Split a camel case name
 
     Parameters
@@ -328,7 +372,7 @@ def camel_case_split(identifier):
     return [m.group(0) for m in matches]
 
 
-def safe_shutdown(got_error=False):
+def safe_shutdown(got_error: bool = False) -> None:
     """ Close all tracked queues and threads in event of crash or on shut down.
 
     Parameters
@@ -356,8 +400,8 @@ class FaceswapError(Exception):
     pass  # pylint:disable=unnecessary-pass
 
 
-class GetModel():  # Pylint:disable=too-few-public-methods
-    """ Check for models in their cache path.
+class GetModel():  # pylint:disable=too-few-public-methods
+    """ Check for models in the cache path.
 
     If available, return the path, if not available, get, unzip and install model
 
@@ -365,9 +409,6 @@ class GetModel():  # Pylint:disable=too-few-public-methods
     ----------
     model_filename: str or list
         The name of the model to be loaded (see notes below)
-    cache_dir: str
-        The model cache folder of the current plugin calling this class. IE: The folder that holds
-        the model to be loaded.
     git_model_id: int
         The second digit in the github tag that identifies this model. See
         https://github.com/deepfakes-models/faceswap-models for more information
@@ -384,12 +425,12 @@ class GetModel():  # Pylint:disable=too-few-public-methods
     ,"resnet_ssd_v1.prototext"]`
     """
 
-    def __init__(self, model_filename, cache_dir, git_model_id):
+    def __init__(self, model_filename: Union[str, List[str]], git_model_id: int) -> None:
         self.logger = logging.getLogger(__name__)
         if not isinstance(model_filename, list):
             model_filename = [model_filename]
         self._model_filename = model_filename
-        self._cache_dir = cache_dir
+        self._cache_dir = os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])), ".fs_cache")
         self._git_model_id = git_model_id
         self._url_base = "https://github.com/deepfakes-models/faceswap-models/releases/download"
         self._chunk_size = 1024  # Chunk size for downloading and unzipping
@@ -397,86 +438,69 @@ class GetModel():  # Pylint:disable=too-few-public-methods
         self._get()
 
     @property
-    def _model_full_name(self):
+    def _model_full_name(self) -> str:
         """ str: The full model name from the filename(s). """
         common_prefix = os.path.commonprefix(self._model_filename)
         retval = os.path.splitext(common_prefix)[0]
-        self.logger.trace(retval)
+        self.logger.trace(retval)  # type: ignore
         return retval
 
     @property
-    def _model_name(self):
+    def _model_name(self) -> str:
         """ str: The model name from the model's full name. """
         retval = self._model_full_name[:self._model_full_name.rfind("_")]
-        self.logger.trace(retval)
+        self.logger.trace(retval)  # type: ignore
         return retval
 
     @property
-    def _model_version(self):
+    def _model_version(self) -> int:
         """ int: The model's version number from the model full name. """
         retval = int(self._model_full_name[self._model_full_name.rfind("_") + 2:])
-        self.logger.trace(retval)
+        self.logger.trace(retval)  # type: ignore
         return retval
 
     @property
-    def model_path(self):
-        """ str: The model path(s) in the cache folder. """
-        retval = [os.path.join(self._cache_dir, fname) for fname in self._model_filename]
-        retval = retval[0] if len(retval) == 1 else retval
-        self.logger.trace(retval)
+    def model_path(self) -> Union[str, List[str]]:
+        """ str or list: The model path(s) in the cache folder. """
+        paths = [os.path.join(self._cache_dir, fname) for fname in self._model_filename]
+        retval: Union[str, List[str]] = paths[0] if len(paths) == 1 else paths
+        self.logger.trace(retval)  # type: ignore
         return retval
 
     @property
-    def _model_zip_path(self):
+    def _model_zip_path(self) -> str:
         """ str: The full path to downloaded zip file. """
-        retval = os.path.join(self._cache_dir, "{}.zip".format(self._model_full_name))
-        self.logger.trace(retval)
+        retval = os.path.join(self._cache_dir, f"{self._model_full_name}.zip")
+        self.logger.trace(retval)  # type: ignore
         return retval
 
     @property
-    def _model_exists(self):
+    def _model_exists(self) -> bool:
         """ bool: ``True`` if the model exists in the cache folder otherwise ``False``. """
         if isinstance(self.model_path, list):
             retval = all(os.path.exists(pth) for pth in self.model_path)
         else:
             retval = os.path.exists(self.model_path)
-        self.logger.trace(retval)
+        self.logger.trace(retval)  # type: ignore
         return retval
 
     @property
-    def _plugin_section(self):
-        """ str: The plugin section from the config_dir """
-        path = os.path.normpath(self._cache_dir)
-        split = path.split(os.sep)
-        retval = split[split.index("plugins") + 1]
-        self.logger.trace(retval)
-        return retval
-
-    @property
-    def _url_section(self):
-        """ int: The section ID in github for this plugin type. """
-        sections = dict(extract=1, train=2, convert=3)
-        retval = sections[self._plugin_section]
-        self.logger.trace(retval)
-        return retval
-
-    @property
-    def _url_download(self):
+    def _url_download(self) -> str:
         """ strL Base download URL for models. """
-        tag = "v{}.{}.{}".format(self._url_section, self._git_model_id, self._model_version)
-        retval = "{}/{}/{}.zip".format(self._url_base, tag, self._model_full_name)
-        self.logger.trace("Download url: %s", retval)
+        tag = f"v{self._git_model_id}.{self._model_version}"
+        retval = f"{self._url_base}/{tag}/{self._model_full_name}.zip"
+        self.logger.trace("Download url: %s", retval)  # type: ignore
         return retval
 
     @property
-    def _url_partial_size(self):
-        """ float: How many bytes have already been downloaded. """
+    def _url_partial_size(self) -> int:
+        """ int: How many bytes have already been downloaded. """
         zip_file = self._model_zip_path
         retval = os.path.getsize(zip_file) if os.path.exists(zip_file) else 0
-        self.logger.trace(retval)
+        self.logger.trace(retval)  # type: ignore
         return retval
 
-    def _get(self):
+    def _get(self) -> None:
         """ Check the model exists, if not, download the model, unzip it and place it in the
         model's cache folder. """
         if self._model_exists:
@@ -486,7 +510,7 @@ class GetModel():  # Pylint:disable=too-few-public-methods
         self._unzip_model()
         os.remove(self._model_zip_path)
 
-    def _download_model(self):
+    def _download_model(self) -> None:
         """ Download the model zip from github to the cache folder. """
         self.logger.info("Downloading model: '%s' from: %s", self._model_name, self._url_download)
         for attempt in range(self._retries):
@@ -494,11 +518,11 @@ class GetModel():  # Pylint:disable=too-few-public-methods
                 downloaded_size = self._url_partial_size
                 req = urllib.request.Request(self._url_download)
                 if downloaded_size != 0:
-                    req.add_header("Range", "bytes={}-".format(downloaded_size))
-                response = urllib.request.urlopen(req, timeout=10)
-                self.logger.debug("header info: {%s}", response.info())
-                self.logger.debug("Return Code: %s", response.getcode())
-                self._write_zipfile(response, downloaded_size)
+                    req.add_header("Range", f"bytes={downloaded_size}-")
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    self.logger.debug("header info: {%s}", response.info())
+                    self.logger.debug("Return Code: %s", response.getcode())
+                    self._write_zipfile(response, downloaded_size)
                 break
             except (socket_error, socket_timeout,
                     urllib.error.HTTPError, urllib.error.URLError) as err:
@@ -514,17 +538,19 @@ class GetModel():  # Pylint:disable=too-few-public-methods
                                      self._url_download, self._cache_dir)
                     sys.exit(1)
 
-    def _write_zipfile(self, response, downloaded_size):
+    def _write_zipfile(self, response: "HTTPResponse", downloaded_size: int) -> None:
         """ Write the model zip file to disk.
 
         Parameters
         ----------
-        response: :class:`urllib.request.urlopen`
+        response: :class:`http.client.HTTPResponse`
             The response from the model download task
         downloaded_size: int
             The amount of bytes downloaded so far
         """
-        length = int(response.getheader("content-length")) + downloaded_size
+        content_length = response.getheader("content-length")
+        content_length = "0" if content_length is None else content_length
+        length = int(content_length) + downloaded_size
         if length == downloaded_size:
             self.logger.info("Zip already exists. Skipping download")
             return
@@ -545,22 +571,22 @@ class GetModel():  # Pylint:disable=too-few-public-methods
                 out_file.write(buffer)
             pbar.close()
 
-    def _unzip_model(self):
+    def _unzip_model(self) -> None:
         """ Unzip the model file to the cache folder """
         self.logger.info("Extracting: '%s'", self._model_name)
         try:
-            zip_file = zipfile.ZipFile(self._model_zip_path, "r")
-            self._write_model(zip_file)
+            with zipfile.ZipFile(self._model_zip_path, "r") as zip_file:
+                self._write_model(zip_file)
         except Exception as err:  # pylint:disable=broad-except
             self.logger.error("Unable to extract model file: %s", str(err))
             sys.exit(1)
 
-    def _write_model(self, zip_file):
+    def _write_model(self, zip_file: zipfile.ZipFile) -> None:
         """ Extract files from zip file and write, with progress bar.
 
         Parameters
         ----------
-        zip_file: str
+        zip_file: :class:`zipfile.ZipFile`
             The downloaded model zip file
         """
         length = sum(f.file_size for f in zip_file.infolist())
@@ -586,71 +612,94 @@ class GetModel():  # Pylint:disable=too-few-public-methods
         pbar.close()
 
 
-class KerasFinder(importlib.abc.MetaPathFinder):
-    """ Importlib Abstract Base Class for intercepting the import of Keras and returning either
-    Keras (AMD backend) or tensorflow.keras (any other backend).
-
-    The Importlib documentation is sparse at best, and real world examples are pretty much
-    non-existent. Coupled with this, the import ``tensorflow.keras`` does not resolve so we need
-    to split out to the actual location of Keras within ``tensorflow_core``. This method works, but
-    it relies on hard coded paths, and is likely to not be the most robust.
-
-    A custom loader is not used, as we can use the standard loader once we have returned the
-    correct spec.
+class DebugTimes():
+    """ A simple tool to help debug timings.
     """
     def __init__(self):
-        self._logger = logging.getLogger(__name__)
-        self._backend = get_backend()
-        self._tf_keras_locations = [["tensorflow_core", "python", "keras", "api", "_v2"],
-                                    ["tensorflow", "python", "keras", "api", "_v2"]]
+        self._times: Dict[str, List[float]] = {}
+        self._steps: Dict[str, float] = {}
+        self._interval = 1
 
-    def find_spec(self, fullname, path, target=None):  # pylint:disable=unused-argument
-        """ Obtain the spec for either keras or tensorflow.keras depending on the backend in use.
-
-        If keras is not passed in as part of the :attr:`fullname` or the path is not ``None``
-        (i.e this is a dependency import) then this returns ``None`` to use the standard import
-        library.
+    def step_start(self, name: str, record: bool = True) -> None:
+        """ Start the timer for the given step name.
 
         Parameters
         ----------
-        fullname: str
-            The absolute name of the module to be imported
-        path: str
-            The search path for the module
-        target: module object, optional
-            Inherited from parent but unused
+        name: str
+            The name of the step to start the timer for
+        record: bool, optional
+            ``True`` to record the step time, ``False`` to not record it.
+            Used for when you have conditional code to time, but do not want to insert if/else
+            statements in the code. Default: `True`
+        """
+        if not record:
+            return
+        self._steps[name] = time()
+
+    def step_end(self, name: str, record: bool = True) -> None:
+        """ Stop the timer and record elapsed time  for the given step name.
+
+        Parameters
+        ----------
+        name: str
+            The name of the step to end the timer for
+        record: bool, optional
+            ``True`` to record the step time, ``False`` to not record it.
+            Used for when you have conditional code to time, but do not want to insert if/else
+            statements in the code. Default: `True`
+        """
+        if not record:
+            return
+        self._times.setdefault(name, []).append(time() - self._steps.pop(name))
+
+    @classmethod
+    def _format_column(cls, text: str, width: int) -> str:
+        """ Pad the given text to be aligned to the given width.
+
+        Parameters
+        ----------
+        text: str
+            The text to be formatted
+        width: int
+            The size of the column to insert the text into
 
         Returns
         -------
-        :class:`importlib.ModuleSpec`
-            The spec for the Keras module to be imported
+        str
+            The text with the correct amount of padding applied
         """
-        prefix = fullname.split(".")[0]
-        suffix = fullname.split(".")[-1]
-        if prefix != "keras" or path is not None:
-            return None
-        self._logger.debug("Importing '%s' as keras for backend: '%s'",
-                           "keras" if self._backend == "amd" else "tf.keras", self._backend)
-        path = sys.path if path is None else path
-        for entry in path:
-            locations = ([os.path.join(entry, *location)
-                          for location in self._tf_keras_locations]
-                         if self._backend != "amd" else [entry])
-            for location in locations:
-                self._logger.debug("Scanning: '%s' for '%s'", location, suffix)
-                if os.path.isdir(os.path.join(location, suffix)):
-                    filename = os.path.join(location, suffix, "__init__.py")
-                    submodule_locations = [os.path.join(location, suffix)]
-                else:
-                    filename = os.path.join(location, suffix + ".py")
-                    submodule_locations = None
-                if not os.path.exists(filename):
-                    continue
-                retval = importlib.util.spec_from_file_location(
-                    fullname,
-                    filename,
-                    submodule_search_locations=submodule_locations)
-                self._logger.debug("Found spec: %s", retval)
-                return retval
-        self._logger.debug("Spec not found for '%s'. Falling back to default import", fullname)
-        return None
+        return f"{text}{' ' * (width - len(text))}"
+
+    def summary(self, decimal_places: int = 6, interval: int = 1) -> None:
+        """ Output a summary of step times.
+
+        Parameters
+        ----------
+        decimal_places: int, optional
+            The number of decimal places to display the summary elapsed times to
+        interval: int, optional
+            How many times summary must be called before printing to console. Default: 1
+        """
+        interval = max(1, interval)
+        if interval != self._interval:
+            self._interval += 1
+            return
+
+        name_col = max(len(key) for key in self._times) + 4
+        items_col = 8
+        time_col = decimal_places + 4
+        print("")
+        print("-" * (name_col + items_col + (3 * time_col)))
+        print(f"{self._format_column('Step', name_col)}{self._format_column('Count', items_col)}"
+              f"{self._format_column('Min', time_col)}{self._format_column('Avg', time_col)}"
+              f"{self._format_column('Max', time_col)}")
+        print("-" * (name_col + items_col + (3 * time_col)))
+        for key, val in self._times.items():
+            _min = f"{np.min(val):.{decimal_places}f}"
+            avg = f"{np.mean(val):.{decimal_places}f}"
+            _max = f"{np.max(val):.{decimal_places}f}"
+            num = str(len(val))
+            print(f"{self._format_column(key, name_col)}{self._format_column(num, items_col)}"
+                  f"{self._format_column(_min, time_col)}{self._format_column(avg, time_col)}"
+                  f"{self._format_column(_max, time_col)}")
+        self._interval = 1

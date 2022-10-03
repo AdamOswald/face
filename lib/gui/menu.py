@@ -1,6 +1,7 @@
 #!/usr/bin python3
 """ The Menu Bars for faceswap GUI """
 
+import gettext
 import locale
 import logging
 import os
@@ -13,21 +14,25 @@ from subprocess import Popen, PIPE, STDOUT
 
 from lib.multithreading import MultiThread
 from lib.serializer import get_serializer
+from lib.utils import FaceswapError
 import update_deps
 
 from .popup_configure import open_popup
 from .custom_widgets import Tooltip
 from .utils import get_config, get_images
 
-_RESOURCES = [("faceswap.dev - Guides and Forum", "https://www.faceswap.dev"),
-              ("Patreon - Support this project", "https://www.patreon.com/faceswap"),
-              ("Discord - The FaceSwap Discord server", "https://discord.gg/VasFUAy"),
-              ("Github - Our Source Code", "https://github.com/deepfakes/faceswap")]
+logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+# LOCALES
+_LANG = gettext.translation("gui.tooltips", localedir="locales", fallback=True)
+_ = _LANG.gettext
 
 _WORKING_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 
-
-logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+_RESOURCES = [(_("faceswap.dev - Guides and Forum"), "https://www.faceswap.dev"),
+              (_("Patreon - Support this project"), "https://www.patreon.com/faceswap"),
+              (_("Discord - The FaceSwap Discord server"), "https://discord.gg/VasFUAy"),
+              (_("Github - Our Source Code"), "https://github.com/deepfakes/faceswap")]
 
 
 class MainMenuBar(tk.Menu):  # pylint:disable=too-many-ancestors
@@ -134,7 +139,16 @@ class FileMenu(tk.Menu):  # pylint:disable=too-many-ancestors
         menu_file = os.path.join(self._config.pathcache, ".recent.json")
         if not os.path.isfile(menu_file) or os.path.getsize(menu_file) == 0:
             self.clear_recent_files(serializer, menu_file)
-        recent_files = serializer.load(menu_file)
+        try:
+            recent_files = serializer.load(menu_file)
+        except FaceswapError as err:
+            if "Error unserializing data for type" in str(err):
+                # Some reports of corruption breaking menus
+                logger.warning("There was an error opening the recent files list so it has been "
+                               "reset.")
+                self.clear_recent_files(serializer, menu_file)
+                recent_files = []
+
         logger.debug("Loaded recent files: %s", recent_files)
         removed_files = []
         for recent_item in recent_files:
@@ -152,10 +166,10 @@ class FileMenu(tk.Menu):  # pylint:disable=too-many-ancestors
                 kwargs = dict(filename=filename)
             else:
                 load_func = self._config.tasks.load
-                lbl = "{} Task".format(command)
+                lbl = f"{command} Task"
                 kwargs = dict(filename=filename, current_tab=False)
             self.recent_menu.add_command(
-                label="{} ({})".format(filename, lbl.title()),
+                label=f"{filename} ({lbl.title()})",
                 command=lambda kw=kwargs, fn=load_func: fn(**kw))
         if removed_files:
             for recent_item in removed_files:
@@ -174,7 +188,7 @@ class FileMenu(tk.Menu):  # pylint:disable=too-many-ancestors
     def clear_recent_files(serializer, menu_file):
         """ Creates or clears recent file list """
         logger.debug("clearing recent files list: '%s'", menu_file)
-        serializer.save(menu_file, list())
+        serializer.save(menu_file, [])
 
     def refresh_recent_menu(self):
         """ Refresh recent menu on save/load of files """
@@ -203,8 +217,6 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
         self.add_command(label="Update Faceswap...",
                          underline=0,
                          command=lambda action="update": self.in_thread(action))
-        if self._build_branches_menu():
-            self.add_cascade(label="Switch Branch", underline=7, menu=self._branches_menu)
         self.add_separator()
         self._build_recources_menu()
         self.add_cascade(label="Resources", underline=0, menu=self.recources_menu)
@@ -234,84 +246,6 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
 
         for branch in branches:
             self._branches_menu.add_command(
-                label=branch,
-                command=lambda b=branch: self._switch_branch(b))
-        return True
-
-    @staticmethod
-    def _get_branches():
-        """ Get the available github branches
-
-        Returns
-        -------
-        str
-            The list of branches available. If no branches were found or there was an
-            error then `None` is returned
-        """
-        gitcmd = "git branch -a"
-        cmd = Popen(gitcmd, shell=True, stdout=PIPE, stderr=STDOUT, cwd=_WORKING_DIR)
-        stdout, _ = cmd.communicate()
-        retcode = cmd.poll()
-        if retcode != 0:
-            logger.debug("Unable to list git branches. return code: %s, message: %s",
-                         retcode, stdout.decode().strip().replace("\n", " - "))
-            return None
-        return stdout.decode(locale.getpreferredencoding())
-
-    @staticmethod
-    def _filter_branches(stdout):
-        """ Filter the branches, remove duplicates and the current branch and return a sorted
-        list.
-
-        Parameters
-        ----------
-        stdout: str
-            The output from the git branch query converted to a string
-
-        Returns
-        -------
-        list
-            Unique list of available branches sorted in alphabetical order
-        """
-        current = None
-        branches = set()
-        for line in stdout.splitlines():
-            branch = line[line.rfind("/") + 1:] if "/" in line else line.strip()
-            if branch.startswith("*"):
-                branch = branch.replace("*", "").strip()
-                current = branch
-                continue
-            branches.add(branch)
-        logger.debug("Found branches: %s", branches)
-        if current in branches:
-            logger.debug("Removing current branch from output: %s", current)
-            branches.remove(current)
-
-        branches = sorted(list(branches), key=str.casefold)
-        logger.debug("Final branches: %s", branches)
-        return branches
-
-    @staticmethod
-    def _switch_branch(branch):
-        """ Change the currently checked out branch, and return a notification.
-
-        Parameters
-        ----------
-        str
-            The branch to switch to
-        """
-        logger.info("Switching branch to '%s'...", branch)
-        gitcmd = "git checkout {}".format(branch)
-        cmd = Popen(gitcmd, shell=True, stdout=PIPE, stderr=STDOUT, cwd=_WORKING_DIR)
-        stdout, _ = cmd.communicate()
-        retcode = cmd.poll()
-        if retcode != 0:
-            logger.error("Unable to switch branch. return code: %s, message: %s",
-                         retcode, stdout.decode().strip().replace("\n", " - "))
-            return
-        logger.info("Succesfully switched to '%s'. You may want to check for updates to make sure "
-                    "that you have the latest code.", branch)
-        logger.info("Please restart Faceswap to complete the switch.")
 
     def _build_recources_menu(self):
         """ Build resources menu """
@@ -333,7 +267,7 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
     @staticmethod
     def clear_console():
         """ Clear the console window """
-        get_config().tk_vars["consoleclear"].set(True)
+        get_config().tk_vars["console_clear"].set(True)
 
     def output_sysinfo(self):
         """ Output system information to console """
@@ -344,7 +278,7 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
             from lib.sysinfo import sysinfo  # pylint:disable=import-outside-toplevel
             info = sysinfo
         except Exception as err:  # pylint:disable=broad-except
-            info = "Error obtaining system info: {}".format(str(err))
+            info = f"Error obtaining system info: {str(err)}"
         self.clear_console()
         logger.debug("Obtained system information: %s", info)
         print(info)
@@ -357,6 +291,9 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
         encoding = locale.getpreferredencoding()
         logger.debug("Encoding: %s", encoding)
         self.check_for_updates(encoding, check=True)
+        logger.info("NB: You are on release 1.0 of Faceswap, which is unlikely to receive further "
+                    "updates. You can upgrade to the latest Faceswap by visiting "
+                    "https://faceswap.dev")
         self.root.config(cursor="")
 
     def update(self):
@@ -368,9 +305,12 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
         success = False
         if self.check_for_updates(encoding):
             success = self.do_update(encoding)
-        update_deps.main(logger=logger)
+        update_deps.main(is_gui=True)
         if success:
             logger.info("Please restart Faceswap to complete the update.")
+        logger.info("NB: You are on release 1.0 of Faceswap, which is unlikely to receive further "
+                    "updates. You can upgrade to the latest Faceswap by visiting "
+                    "https://faceswap.dev")
         self.root.config(cursor="")
 
     @staticmethod
@@ -381,9 +321,9 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
         update = False
         msg = ""
         gitcmd = "git remote update && git status -uno"
-        cmd = Popen(gitcmd, shell=True, stdout=PIPE, stderr=STDOUT, cwd=_WORKING_DIR)
-        stdout, _ = cmd.communicate()
-        retcode = cmd.poll()
+        with Popen(gitcmd, shell=True, stdout=PIPE, stderr=STDOUT, cwd=_WORKING_DIR) as cmd:
+            stdout, _ = cmd.communicate()
+            retcode = cmd.poll()
         if retcode != 0:
             msg = ("Git is not installed or you are not running a cloned repo. "
                    "Unable to check for updates")
@@ -413,15 +353,20 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
         """ Update Faceswap """
         logger.info("A new version is available. Updating...")
         gitcmd = "git pull"
-        cmd = Popen(gitcmd, shell=True, stdout=PIPE, stderr=STDOUT, bufsize=1, cwd=_WORKING_DIR)
-        while True:
-            output = cmd.stdout.readline().decode(encoding)
-            if output == "" and cmd.poll() is not None:
-                break
-            if output:
-                logger.debug("'%s' output: '%s'", gitcmd, output.strip())
-                print(output.strip())
-        retcode = cmd.poll()
+        with Popen(gitcmd,
+                   shell=True,
+                   stdout=PIPE,
+                   stderr=STDOUT,
+                   bufsize=1,
+                   cwd=_WORKING_DIR) as cmd:
+            while True:
+                output = cmd.stdout.readline().decode(encoding)
+                if output == "" and cmd.poll() is not None:
+                    break
+                if output:
+                    logger.debug("'%s' output: '%s'", gitcmd, output.strip())
+                    print(output.strip())
+            retcode = cmd.poll()
         logger.debug("'%s' returncode: %s", gitcmd, retcode)
         if retcode != 0:
             logger.info("An error occurred during update. return code: %s", retcode)
@@ -461,87 +406,16 @@ class TaskBar(ttk.Frame):  # pylint: disable=too-many-ancestors
                              command=lambda fn=cmd, kw=kwargs: fn(**kw))
             btn.pack(side=tk.LEFT, anchor=tk.W)
             hlp = self.set_help(btntype)
-            Tooltip(btn, text=hlp, wraplength=200)
+            Tooltip(btn, text=hlp, wrap_length=200)
 
     def _task_btns(self):
         frame = ttk.Frame(self._btn_frame)
         frame.pack(side=tk.LEFT, anchor=tk.W, expand=False, padx=2)
 
         for loadtype in ("load", "save", "save_as", "clear", "reload"):
-            btntype = "{}2".format(loadtype)
+            btntype = f"{loadtype}2"
             logger.debug("Adding button: '%s'", btntype)
 
             loader, kwargs = self._loader_and_kwargs(loadtype)
             if loadtype == "load":
                 kwargs["current_tab"] = True
-            cmd = getattr(self._config.tasks, loader)
-            btn = ttk.Button(
-                frame,
-                image=get_images().icons[btntype],
-                command=lambda fn=cmd, kw=kwargs: fn(**kw))
-            btn.pack(side=tk.LEFT, anchor=tk.W)
-            hlp = self.set_help(btntype)
-            Tooltip(btn, text=hlp, wraplength=200)
-
-    @staticmethod
-    def _loader_and_kwargs(btntype):
-        if btntype == "save":
-            loader = btntype
-            kwargs = dict(save_as=False)
-        elif btntype == "save_as":
-            loader = "save"
-            kwargs = dict(save_as=True)
-        else:
-            loader = btntype
-            kwargs = dict()
-        logger.debug("btntype: %s, loader: %s, kwargs: %s", btntype, loader, kwargs)
-        return loader, kwargs
-
-    def _settings_btns(self):
-        # pylint: disable=cell-var-from-loop
-        frame = ttk.Frame(self._btn_frame)
-        frame.pack(side=tk.LEFT, anchor=tk.W, expand=False, padx=2)
-        for name in ("extract", "train", "convert"):
-            btntype = "settings_{}".format(name)
-            btntype = btntype if btntype in get_images().icons else "settings"
-            logger.debug("Adding button: '%s'", btntype)
-            btn = ttk.Button(
-                frame,
-                image=get_images().icons[btntype],
-                command=lambda n=name: open_popup(name=n))
-            btn.pack(side=tk.LEFT, anchor=tk.W)
-            hlp = "Configure {} settings...".format(name.title())
-            Tooltip(btn, text=hlp, wraplength=200)
-
-    @staticmethod
-    def set_help(btntype):
-        """ Set the helptext for option buttons """
-        logger.debug("Setting help")
-        hlp = ""
-        task = "currently selected Task" if btntype[-1] == "2" else "Project"
-        if btntype.startswith("reload"):
-            hlp = "Reload {} from disk".format(task)
-        if btntype == "new":
-            hlp = "Create a new {}...".format(task)
-        if btntype.startswith("clear"):
-            hlp = "Reset {} to default".format(task)
-        elif btntype.startswith("save") and "_" not in btntype:
-            hlp = "Save {}".format(task)
-        elif btntype.startswith("save_as"):
-            hlp = "Save {} as...".format(task)
-        elif btntype.startswith("load"):
-            msg = task
-            if msg.endswith("Task"):
-                msg += " from a task or project file"
-            hlp = "Load {}...".format(msg)
-        return hlp
-
-    def _group_separator(self):
-        separator = ttk.Separator(self._btn_frame, orient="vertical")
-        separator.pack(padx=(2, 1), fill=tk.Y, side=tk.LEFT)
-
-    def _section_separator(self):
-        frame = ttk.Frame(self)
-        frame.pack(side=tk.BOTTOM, fill=tk.X)
-        separator = ttk.Separator(frame, orient="horizontal")
-        separator.pack(fill=tk.X, side=tk.LEFT, expand=True)

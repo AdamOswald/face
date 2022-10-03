@@ -7,18 +7,15 @@ import os
 import sys
 
 import cv2
-import numpy as np
 from tqdm import tqdm
 
 # TODO imageio single frame seek seems slow. Look into this
 # import imageio
 
-from lib.aligner import Extract as AlignerExtract
-from lib.alignments import Alignments, get_serializer
-from lib.faces_detect import DetectedFace
-from lib.image import (count_frames, encode_image_with_hash, ImagesLoader, read_image,
-                       read_image_hash_batch)
-from lib.utils import _image_extensions, _video_extensions
+from lib.align import Alignments, DetectedFace, update_legacy_png_header
+from lib.image import (count_frames, generate_thumbnail, ImagesLoader,
+                       png_write_meta, read_image, read_image_meta_batch)
+from lib.utils import _image_extensions, _video_extensions, FaceswapError
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -31,10 +28,6 @@ class AlignmentData(Alignments):
                      self.__class__.__name__, alignments_file)
         logger.info("[ALIGNMENT DATA]")  # Tidy up cli output
         folder, filename = self.check_file_exists(alignments_file)
-        if filename.lower() == "dfl":
-            self._serializer = get_serializer("compressed")
-            self._file = "{}.{}".format(filename.lower(), self._serializer.file_extension)
-            return
         super().__init__(folder, filename=filename)
         logger.verbose("%s items loaded", self.frames_count)
         logger.debug("Initialized %s", self.__class__.__name__)
@@ -43,11 +36,7 @@ class AlignmentData(Alignments):
     def check_file_exists(alignments_file):
         """ Check the alignments file exists"""
         folder, filename = os.path.split(alignments_file)
-        if filename.lower() == "dfl":
-            folder = None
-            filename = "dfl"
-            logger.info("Using extracted DFL faces for alignments")
-        elif not os.path.isfile(alignments_file):
+        if not os.path.isfile(alignments_file):
             logger.error("ERROR: alignments file not found at: '%s'", alignments_file)
             sys.exit(0)
         if folder:
@@ -65,50 +54,32 @@ class AlignmentData(Alignments):
         self._data = self._load()
         logger.debug("Re-loaded alignments")
 
-    def add_face_hashes(self, frame_name, hashes):
-        """ Recalculate face hashes """
-        logger.trace("Adding face hash: (frame: '%s', hashes: %s)", frame_name, hashes)
-        faces = self.get_faces_in_frame(frame_name)
-        count_match = len(faces) - len(hashes)
-        if count_match != 0:
-            msg = "more" if count_match > 0 else "fewer"
-            logger.warning("There are %s %s face(s) in the alignments file than exist in the "
-                           "faces folder. Check your sources for frame '%s'.",
-                           abs(count_match), msg, frame_name)
-        for idx, i_hash in hashes.items():
-            faces[idx]["hash"] = i_hash
-
-    def data_from_dfl(self, alignments, faces_folder):
-        """ Set :attr:`data` from alignments extracted from a Deep Face Lab face set.
-
-        Parameters
-        ----------
-        alignments: dict
-            The extracted alignments from a Deep Face Lab face set
-        faces_folder: str
-            The folder that the faces are in, where the newly generated alignments file will
-            be saved
-        """
-        self._data = alignments
-        self.set_filename(self._get_location(faces_folder, "alignments"))
-
     def set_filename(self, filename):
         """ Set the :attr:`_file` to the given filename.
 
         Parameters
         ----------
         filename: str
-            The full path and filename to se the alignments file name to
+            The full path and filename to set the alignments file name to
         """
         self._file = filename
 
 
 class MediaLoader():
-    """ Class to load filenames from folder """
-    def __init__(self, folder):
+    """ Class to load images.
+
+    Parameters
+    ----------
+    folder: str
+        The folder of images or video file to load images from
+    count: int or ``None``, optional
+        If the total frame count is known it can be passed in here which will skip
+        analyzing a video file. If the count is not passed in, it will be calculated.
+    """
+    def __init__(self, folder, count=None):
         logger.debug("Initializing %s: (folder: '%s')", self.__class__.__name__, folder)
         logger.info("[%s DATA]", self.__class__.__name__.upper())
-        self._count = None
+        self._count = count
         self.folder = folder
         self.vid_reader = self.check_input_folder()
         self.file_list_sorted = self.sorted_items()
@@ -220,56 +191,115 @@ class MediaLoader():
         numpy.ndarray
             The image that has been loaded from disk
         """
-        loader = ImagesLoader(self.folder, queue_size=32)
+        loader = ImagesLoader(self.folder, queue_size=32, count=self._count)
         if skip_list is not None:
             loader.add_skip_list(skip_list)
         for filename, image in loader.load():
             yield filename, image
 
     @staticmethod
-    def save_image(output_folder, filename, image):
+    def save_image(output_folder, filename, image, metadata=None):
         """ Save an image """
         output_file = os.path.join(output_folder, filename)
-        output_file = os.path.splitext(output_file)[0]+'.png'
+        output_file = os.path.splitext(output_file)[0] + ".png"
         logger.trace("Saving image: '%s'", output_file)
-        cv2.imwrite(output_file, image)  # pylint: disable=no-member
+        if metadata:
+            encoded_image = cv2.imencode(".png", image)[1]
+            encoded_image = png_write_meta(encoded_image.tobytes(), metadata)
+            with open(output_file, "wb") as out_file:
+                out_file.write(encoded_image)
+        else:
+            cv2.imwrite(output_file, image)  # pylint: disable=no-member
 
 
 class Faces(MediaLoader):
-    """ Object to hold the faces that are to be swapped out """
+    """ Object to load Extracted Faces from a folder.
+
+    Parameters
+    ----------
+    folder: str
+        The folder to load faces from
+    alignments: :class:`lib.align.Alignments`, optional
+        The alignments object that contains the faces. Used to update legacy hash based faces
+        for <v2.1 alignments to png header based version. Pass in ``None`` to not update legacy
+        faces (raises error instead). Default: ``None``
+    """
+    def __init__(self, folder, alignments=None):
+        self._alignments = alignments
+        super().__init__(folder)
 
     def process_folder(self):
-        """ Iterate through the faces folder pulling out various information """
+        """ Iterate through the faces folder pulling out various information for each face.
+
+        Yields
+        ------
+        dict
+            A dictionary for each face found containing the keys returned from
+            :class:`lib.image.read_image_meta_batch`
+        """
         logger.info("Loading file list from %s", self.folder)
 
-        filelist = [os.path.join(self.folder, face)
-                    for face in os.listdir(self.folder)
-                    if self.valid_extension(face)]
-        for fullpath, face_hash in tqdm(read_image_hash_batch(filelist),
-                                        total=len(filelist),
-                                        desc="Reading Face Hashes"):
-            filename = os.path.basename(fullpath)
-            face_name, extension = os.path.splitext(filename)
-            retval = {"face_fullname": filename,
-                      "face_name": face_name,
-                      "face_extension": extension,
-                      "face_hash": face_hash}
-            logger.trace(retval)
+        if self._alignments is not None:  # Legacy updating
+            filelist = [os.path.join(self.folder, face)
+                        for face in os.listdir(self.folder)
+                        if self.valid_extension(face)]
+        else:
+            filelist = [os.path.join(self.folder, face)
+                        for face in os.listdir(self.folder)
+                        if os.path.splitext(face)[-1] == ".png"]
+
+        log_once = False
+        for fullpath, metadata in tqdm(read_image_meta_batch(filelist),
+                                       total=len(filelist),
+                                       desc="Reading Face Data"):
+
+            if "itxt" not in metadata or "source" not in metadata["itxt"]:
+                if self._alignments is None:  # Can't update legacy
+                    raise FaceswapError(
+                        f"The folder '{self.folder}' contains images that do not include Faceswap "
+                        "metadata.\nAll images in the provided folder should contain faces "
+                        "generated from Faceswap's extraction process.\nPlease double check the "
+                        "source and try again.")
+
+                if not log_once:
+                    logger.warning("Legacy faces discovered. These faces will be updated")
+                    log_once = True
+                data = update_legacy_png_header(fullpath, self._alignments)
+                if not data:
+                    raise FaceswapError(
+                        "Some of the faces being passed in from '{}' could not be matched to the "
+                        "alignments file '{}'\nPlease double check your sources and try "
+                        "again.".format(self.folder, self._alignments.file))
+                retval = data["source"]
+            else:
+                retval = metadata["itxt"]["source"]
+
+            retval["current_filename"] = os.path.basename(fullpath)
             yield retval
 
     def load_items(self):
-        """ Load the face names into dictionary """
+        """ Load the face names into dictionary.
+
+        Returns
+        -------
+        dict
+            The source filename as key with list of face indices for the frame as value
+        """
         faces = dict()
         for face in self.file_list_sorted:
-            faces.setdefault(face["face_hash"], list()).append((face["face_name"],
-                                                                face["face_extension"]))
+            faces.setdefault(face["source_filename"], list()).append(face["face_index"])
         logger.trace(faces)
         return faces
 
     def sorted_items(self):
-        """ Return the items sorted by face name """
-        items = sorted([item for item in self.process_folder()],
-                       key=lambda x: (x["face_name"]))
+        """ Return the items sorted by the saved file name.
+
+        Returns
+        --------
+        list
+            List of `dict` objects for each face found, sorted by the face's current filename
+        """
+        items = sorted(self.process_folder(), key=lambda x: (x["current_filename"]))
         logger.trace(items)
         return items
 
@@ -323,8 +353,7 @@ class Frames(MediaLoader):
 
     def sorted_items(self):
         """ Return the items sorted by filename """
-        items = sorted([item for item in self.process_folder()],
-                       key=lambda x: (x["frame_name"]))
+        items = sorted(self.process_folder(), key=lambda x: (x["frame_name"]))
         logger.trace(items)
         return items
 
@@ -332,11 +361,10 @@ class Frames(MediaLoader):
 class ExtractedFaces():
     """ Holds the extracted faces and matrix for
         alignments """
-    def __init__(self, frames, alignments, size=256, align_eyes=False):
+    def __init__(self, frames, alignments, size=512):
         logger.trace("Initializing %s: size: %s", self.__class__.__name__, size)
         self.size = size
         self.padding = int(size * 0.1875)
-        self.align_eyes_bool = align_eyes
         self.alignments = alignments
         self.frames = frames
         self.current_frame = None
@@ -363,8 +391,8 @@ class ExtractedFaces():
                      self.current_frame, alignment)
         face = DetectedFace()
         face.from_alignment(alignment, image=image)
-        face.load_aligned(image, size=self.size)
-        face = self.align_eyes(face, image) if self.align_eyes_bool else face
+        face.load_aligned(image, size=self.size, centering="head")
+        face.thumbnail = generate_thumbnail(face.aligned.face, size=80, quality=60)
         return face
 
     def get_faces_in_frame(self, frame, update=False, image=None):
@@ -382,7 +410,7 @@ class ExtractedFaces():
             self.get_faces(frame)
         sizes = list()
         for face in self.faces:
-            roi = face.original_roi.squeeze()
+            roi = face.aligned.original_roi.squeeze()
             top_left, top_right = roi[0], roi[3]
             len_x = top_right[0] - top_left[0]
             len_y = top_right[1] - top_left[1]
@@ -393,37 +421,3 @@ class ExtractedFaces():
             sizes.append(length)
         logger.trace("sizes: '%s'", sizes)
         return sizes
-
-    @staticmethod
-    def save_face_with_hash(filename, extension, face):
-        """ Save a face and return it's hash """
-        f_hash, img = encode_image_with_hash(face, extension)
-        logger.trace("Saving face: '%s'", filename)
-        with open(filename, "wb") as out_file:
-            out_file.write(img)
-        return f_hash
-
-    @staticmethod
-    def align_eyes(face, image):
-        """ Re-extract a face with the pupils forced to be absolutely horizontally aligned """
-        umeyama_landmarks = face.aligned_landmarks
-        left_eye_center = umeyama_landmarks[42:48].mean(axis=0)
-        right_eye_center = umeyama_landmarks[36:42].mean(axis=0)
-        d_y = right_eye_center[1] - left_eye_center[1]
-        d_x = right_eye_center[0] - left_eye_center[0]
-        theta = np.pi - np.arctan2(d_y, d_x)
-        rot_cos = np.cos(theta)
-        rot_sin = np.sin(theta)
-        rotation_matrix = np.array([[rot_cos, -rot_sin, 0.],
-                                    [rot_sin, rot_cos, 0.],
-                                    [0., 0., 1.]])
-
-        mat_umeyama = np.concatenate((face.aligned["matrix"], np.array([[0., 0., 1.]])), axis=0)
-        corrected_mat = np.dot(rotation_matrix, mat_umeyama)
-        face.aligned["matrix"] = corrected_mat[:2]
-        face.aligned["face"] = AlignerExtract().transform(image,
-                                                          face.aligned["matrix"],
-                                                          face.aligned["size"],
-                                                          int(face.aligned["size"] * 0.375) // 2)
-        logger.trace("Adjusted matrix: %s", face.aligned["matrix"])
-        return face

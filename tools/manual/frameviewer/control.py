@@ -9,6 +9,8 @@ import cv2
 import numpy as np
 from PIL import Image, ImageTk
 
+from lib.align import AlignedFace
+
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
@@ -22,11 +24,13 @@ class Navigation():
     """
     def __init__(self, display_frame):
         logger.debug("Initializing %s", self.__class__.__name__)
+        self._display_frame = display_frame
         self._globals = display_frame._globals
         self._det_faces = display_frame._det_faces
         self._nav = display_frame._nav
         self._tk_is_playing = tk.BooleanVar()
         self._tk_is_playing.set(False)
+        self._det_faces.tk_face_count_changed.trace("w", self._update_total_frame_count)
         logger.debug("Initialized %s", self.__class__.__name__)
 
     @property
@@ -35,19 +39,33 @@ class Navigation():
         return self._nav["scale"].cget("to") + 1
 
     def nav_scale_callback(self, *args, reset_progress=True):  # pylint:disable=unused-argument
-        """ Adjust transport slider scale for different filters.
-
-        Returns
-        -------
-        bool
-            ``True`` if the navigation scale has been updated otherwise ``False``
+        """ Adjust transport slider scale for different filters. Hide or display optional filter
+        controls.
         """
+        self._display_frame.pack_threshold_slider()
         if reset_progress:
             self.stop_playback()
         frame_count = self._det_faces.filter.count
         if self._current_nav_frame_count == frame_count:
             logger.trace("Filtered count has not changed. Returning")
-            return False
+        if self._globals.tk_filter_mode.get() == "Misaligned Faces":
+            self._det_faces.tk_face_count_changed.set(True)
+        self._update_total_frame_count()
+        if reset_progress:
+            self._globals.tk_transport_index.set(0)
+
+    def _update_total_frame_count(self, *args):  # pylint:disable=unused-argument
+        """ Update the displayed number of total frames that meet the current filter criteria.
+
+        Parameters
+        ----------
+        args: tuple
+            Required for tkinter trace callback but unused
+        """
+        frame_count = self._det_faces.filter.count
+        if self._current_nav_frame_count == frame_count:
+            logger.trace("Filtered count has not changed. Returning")
+            return
         max_frame = max(0, frame_count - 1)
         logger.debug("Filtered frame count has changed. Updating from %s to %s",
                      self._current_nav_frame_count, frame_count)
@@ -55,9 +73,6 @@ class Navigation():
         self._nav["label"].config(text="/{}".format(max_frame))
         state = "disabled" if max_frame == 0 else "normal"
         self._nav["entry"].config(state=state)
-        if reset_progress:
-            self._globals.tk_transport_index.set(0)
-        return True
 
     @property
     def tk_is_playing(self):
@@ -82,8 +97,8 @@ class Navigation():
         """ Update The frame navigation position to the next frame based on filter. """
         if not is_playing:
             self.stop_playback()
-        position = self._globals.tk_transport_index.get()
-        face_count_change = self._check_face_count_change()
+        position = self._get_safe_frame_index()
+        face_count_change = not self._det_faces.filter.frame_meets_criteria
         if face_count_change:
             position -= 1
         frame_count = self._det_faces.filter.count if frame_count is None else frame_count
@@ -96,39 +111,33 @@ class Navigation():
     def decrement_frame(self):
         """ Update The frame navigation position to the previous frame based on filter. """
         self.stop_playback()
-        position = self._globals.tk_transport_index.get()
-        face_count_change = self._check_face_count_change()
-        if face_count_change:
-            position += 1
+        position = self._get_safe_frame_index()
+        face_count_change = not self._det_faces.filter.frame_meets_criteria
         if not face_count_change and (self._det_faces.filter.count == 0 or position == 0):
-            logger.debug("End of Stream. Not incrementing")
+            logger.debug("End of Stream. Not decrementing")
             return
         self._globals.tk_transport_index.set(min(max(0, self._det_faces.filter.count - 1),
                                                  max(0, position - 1)))
 
-    def _check_face_count_change(self):
-        """ Check whether the face count for the current filter has changed, and update the
-        transport scale appropriately.
-
-        Perform additional check on whether the current frame still meets the selected navigation
-        mode filter criteria.
+    def _get_safe_frame_index(self):
+        """ Obtain the current frame position from the tk_transport_index variable in
+        a safe manner (i.e. handle for non-numeric)
 
         Returns
         -------
-        bool
-            ``True`` if the currently active frame no longer meets the filter criteria otherwise
-            ``False``
+        int
+            The current transport frame index
         """
-        filter_mode = self._globals.filter_mode
-        if filter_mode not in ("No Faces", "Multiple Faces"):
-            return False
-        if not self.nav_scale_callback(reset_progress=False):
-            return False
-        face_count = len(self._det_faces.current_faces[self._globals.frame_index])
-        if (filter_mode == "No Faces" and face_count != 0) or (filter_mode == "Multiple Faces"
-                                                               and face_count < 2):
-            return True
-        return False
+        try:
+            retval = self._globals.tk_transport_index.get()
+        except tk.TclError as err:
+            if "expected floating-point" not in str(err):
+                raise
+            val = str(err).split(" ")[-1].replace("\"", "")
+            retval = "".join(ch for ch in val if ch.isdigit())
+            retval = 0 if not retval else int(retval)
+            self._globals.tk_transport_index.set(retval)
+        return retval
 
     def goto_first_frame(self):
         """ Go to the first frame that meets the filter criteria. """
@@ -148,7 +157,7 @@ class Navigation():
         self._globals.tk_transport_index.set(frame_count - 1)
 
 
-class BackgroundImage():
+class BackgroundImage():  # pylint:disable=too-few-public-methods
     """ The background image of the canvas """
     def __init__(self, canvas):
         self._canvas = canvas
@@ -162,6 +171,7 @@ class BackgroundImage():
                                                 image=self._tk_frame,
                                                 anchor=tk.CENTER,
                                                 tags="main_image")
+        self._zoomed_centering = "face"
 
     @property
     def _current_view_mode(self):
@@ -179,8 +189,8 @@ class BackgroundImage():
             The currently active editor's selected view mode.
         """
         self._switch_image(view_mode)
-        getattr(self, "_update_tk_{}".format(self._current_view_mode))()
         logger.trace("Updating background frame")
+        getattr(self, "_update_tk_{}".format(self._current_view_mode))()
 
     def _switch_image(self, view_mode):
         """ Switch the image between the full frame image and the zoomed face image.
@@ -190,8 +200,10 @@ class BackgroundImage():
         view_mode: ["frame", "face"]
             The currently active editor's selected view mode.
         """
-        if view_mode == self._current_view_mode:
+        if view_mode == self._current_view_mode and (
+                self._canvas.active_editor.zoomed_centering == self._zoomed_centering):
             return
+        self._zoomed_centering = self._canvas.active_editor.zoomed_centering
         logger.trace("Switching background image from '%s' to '%s'",
                      self._current_view_mode, view_mode)
         img = getattr(self, "_tk_{}".format(view_mode))
@@ -233,10 +245,10 @@ class BackgroundImage():
             face = np.ones((size, size, 3), dtype="uint8")
         else:
             det_face = self._det_faces.current_faces[frame_idx][face_idx]
-            det_face.load_aligned(self._globals.current_frame["image"], size=size, force=True)
-            face = det_face.aligned_face.copy()
-            det_face.aligned["image"] = None
-
+            face = AlignedFace(det_face.landmarks_xy,
+                               image=self._globals.current_frame["image"],
+                               centering=self._zoomed_centering,
+                               size=size).face
         logger.trace("face shape: %s", face.shape)
         return face[..., 2::-1]
 

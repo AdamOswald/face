@@ -3,6 +3,7 @@
 
 from collections import OrderedDict
 from configparser import ConfigParser
+import gettext
 import logging
 import os
 import sys
@@ -10,14 +11,17 @@ import tkinter as tk
 from tkinter import ttk
 from importlib import import_module
 
+from lib.serializer import get_serializer
+
 from .control_helper import ControlPanel, ControlPanelOption
 from .custom_widgets import Tooltip
-from .utils import get_config, get_images
+from .utils import FileHandler, get_config, get_images, PATHCACHE
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
-_POPUP = []
-_CONFIG_FILES = []
-_CONFIGS = dict()
+
+# LOCALES
+_LANG = gettext.translation("gui.tooltips", localedir="locales", fallback=True)
+_ = _LANG.gettext
 
 
 class _State():
@@ -26,7 +30,7 @@ class _State():
         self._popup = None
         # The GUI Config cannot be scanned until GUI is launched, so this is populated
         # on the first call to load the settings
-        self._configs = dict()
+        self._configs = {}
 
     def open_popup(self, name=None):
         """ Launch the popup, ensuring only one instance is ever open
@@ -37,11 +41,13 @@ class _State():
             The name of the configuration file. Used for selecting the correct section if required.
             Set to ``None`` if no initial section should be selected. Default: ``None``
         """
-        if not self._configs:
-            self._scan_for_configs()
+        self._scan_for_configs()
         logger.debug("name: %s", name)
         if self._popup is not None:
-            logger.info("Popup already open. Returning: %s", _POPUP)
+            logger.debug("Restoring existing popup")
+            self._popup.update()
+            self._popup.deiconify()
+            self._popup.lift()
             return
         self._popup = _ConfigurePlugins(name, self._configs)
 
@@ -93,7 +99,7 @@ class _State():
 
 
 _STATE = _State()
-open_popup = _STATE.open_popup
+open_popup = _STATE.open_popup  # pylint:disable=invalid-name
 
 
 class _ConfigurePlugins(tk.Toplevel):
@@ -116,13 +122,15 @@ class _ConfigurePlugins(tk.Toplevel):
         self._set_geometry()
         self._tk_vars = dict(header=tk.StringVar())
 
+        theme = {**get_config().user_theme["group_panel"],
+                 **get_config().user_theme["group_settings"]}
         header_frame = self._build_header()
         content_frame = ttk.Frame(self)
 
-        self._tree = _Tree(content_frame, configurations, name).tree
+        self._tree = _Tree(content_frame, configurations, name, theme).tree
         self._tree.bind("<ButtonRelease-1>", self._select_item)
 
-        self._opts_frame = DisplayArea(content_frame, configurations, self._tree)
+        self._opts_frame = DisplayArea(self, content_frame, configurations, self._tree, theme)
         self._opts_frame.pack(fill=tk.BOTH, expand=True, side=tk.RIGHT)
         footer_frame = self._build_footer()
 
@@ -149,7 +157,7 @@ class _ConfigurePlugins(tk.Toplevel):
         width = int(600 * scaling_factor)
         height = int(536 * scaling_factor)
         logger.debug("Pop up Geometry: %sx%s, %s+%s", width, height, pos_x, pos_y)
-        self.geometry("{}x{}+{}+{}".format(width, height, pos_x, pos_y))
+        self.geometry(f"{width}x{height}+{pos_x}+{pos_y}")
 
     def _build_header(self):
         """ Build the main header text and separator. """
@@ -160,7 +168,7 @@ class _ConfigurePlugins(tk.Toplevel):
         lbl_header = ttk.Label(lbl_frame,
                                textvariable=self._tk_vars["header"],
                                anchor=tk.W,
-                               style="H1.TLabel")
+                               style="SPanel.Header1.TLabel")
         lbl_header.pack(fill=tk.X, expand=True, side=tk.LEFT)
 
         sep = ttk.Frame(header_frame, height=2, relief=tk.RIDGE)
@@ -195,15 +203,15 @@ class _ConfigurePlugins(tk.Toplevel):
                              width=10,
                              command=lambda: self._opts_frame.reset(page_only=True))
 
-        Tooltip(btn_cls, text="Close without saving", wraplength=720)
-        Tooltip(btn_save, text="Save this page's config", wraplength=720)
-        Tooltip(btn_rst, text="Reset this page's config to default values", wraplength=720)
+        Tooltip(btn_cls, text=_("Close without saving"), wrap_length=720)
+        Tooltip(btn_save, text=_("Save this page's config"), wrap_length=720)
+        Tooltip(btn_rst, text=_("Reset this page's config to default values"), wrap_length=720)
         Tooltip(btn_saveall,
-                text="Save all settings for the currently selected config",
-                wraplength=720)
+                text=_("Save all settings for the currently selected config"),
+                wrap_length=720)
         Tooltip(btn_rstall,
-                text="Reset all settings for the currently selected config to default values",
-                wraplength=720)
+                text=_("Reset all settings for the currently selected config to default values"),
+                wrap_length=720)
 
         btn_cls.pack(padx=2, side=tk.RIGHT)
         btn_save.pack(padx=2, side=tk.RIGHT)
@@ -230,7 +238,7 @@ class _ConfigurePlugins(tk.Toplevel):
         selection = self._tree.focus()
         section = selection.split("|")[0]
         subsections = selection.split("|")[1:] if "|" in selection else []
-        self._tk_vars["header"].set("{} Settings".format(section.title()))
+        self._tk_vars["header"].set(f"{section.title()} Settings")
         self._opts_frame.select_options(section, subsections)
 
 
@@ -247,10 +255,12 @@ class _Tree(ttk.Frame):  # pylint:disable=too-many-ancestors
     name: str
         The name of the section that is being navigated to. Used for opening on the correct
         page in the Tree View. ``None`` if no specific area is being navigated to
+    theme: dict
+        The color mapping for the settings pop-up theme
     """
-    def __init__(self, parent, configurations, name):
+    def __init__(self, parent, configurations, name, theme):
         super().__init__(parent)
-        self._fix_styles()
+        self._fix_styles(theme)
 
         frame = ttk.Frame(self, relief=tk.SOLID, borderwidth=1)
         self._tree = self._build_tree(frame, configurations, name)
@@ -268,19 +278,32 @@ class _Tree(ttk.Frame):  # pylint:disable=too-many-ancestors
         return self._tree
 
     @classmethod
-    def _fix_styles(cls):
+    def _fix_styles(cls, theme):
         """ Tkinter has a bug when setting the background style on certain OSes. This fixes the
         issue so we can set different colored backgrounds.
 
         We also set some default styles for our tree view.
+
+        Parameters
+        ----------
+        theme: dict
+            The color mapping for the settings pop-up theme
         """
         style = ttk.Style()
+
+        # Fix a bug in Tree-view that doesn't show alternate foreground on selection
         fix_map = lambda o: [elm for elm in style.map("Treeview", query_opt=o)  # noqa
                              if elm[:2] != ("!disabled", "!selected")]
-        style.map("Treeview", foreground=fix_map("foreground"), background=fix_map("background"))
+
         # Remove the Borders
-        style.configure("ConfigNav.Treeview", bd=0)
+        style.configure("ConfigNav.Treeview", bd=0, background="#F0F0F0")
         style.layout("ConfigNav.Treeview", [('ConfigNav.Treeview.treearea', {'sticky': 'nswe'})])
+
+        # Set colors
+        style.map("ConfigNav.Treeview",
+                  foreground=fix_map("foreground"),
+                  background=fix_map("background"))
+        style.map('ConfigNav.Treeview', background=[('selected', theme["tree_select"])])
 
     def _build_tree(self, parent, configurations, name):
         """ Build the configuration pop-up window.
@@ -308,7 +331,7 @@ class _Tree(ttk.Frame):  # pylint:disable=too-many-ancestors
         categories += [x for x in ordered if x not in categories]
 
         for cat in categories:
-            img = get_images().icons.get("settings_{}".format(cat), "")
+            img = get_images().icons.get(f"settings_{cat}", "")
             text = cat.replace("_", " ").title()
             text = " " + text if img else text
             is_open = tk.TRUE if name is None or name == cat else tk.FALSE
@@ -344,14 +367,14 @@ class _Tree(ttk.Frame):  # pylint:disable=too-many-ancestors
             if section[-1] == "global":  # Global categories get escalated to parent
                 continue
             sect = section[0]
-            section_id = "{}|{}".format(category, sect)
+            section_id = f"{category}|{sect}"
             if sect not in seen:
                 seen.add(sect)
                 text = sect.replace("_", " ").title()
                 tree.insert(category, "end", section_id, text=text, open=is_open, tags="section")
             if len(section) == 2:
                 opt = section[-1]
-                opt_id = "{}|{}".format(section_id, opt)
+                opt_id = f"{section_id}|{opt}"
                 opt_text = opt.replace("_", " ").title()
                 tree.insert(section_id, "end", opt_id, text=opt_text, open=is_open, tags="option")
 
@@ -361,6 +384,8 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
 
     Parameters
     ----------
+    top_level: :class:``tk.Toplevel``
+        The tkinter Top Level widget
     parent: :class:`tkinter.ttk.Frame`
         The parent frame that holds the Display Area of the pop up configuration window
     tree: :class:`tkinter.ttk.TreeView`
@@ -368,16 +393,32 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
     configurations: dict
         Dictionary containing the :class:`~lib.config.FaceswapConfig` object for each
         configuration section for the requested pop-up window
+    theme: dict
+        The color mapping for the settings pop-up theme
     """
-    def __init__(self, parent, configurations, tree):
+    def __init__(self, top_level, parent, configurations, tree, theme):
         super().__init__(parent)
         self._configs = configurations
+        self._theme = theme
         self._tree = tree
-        self._vars = dict()
-        self._cache = dict()
+        self._vars = {}
+        self._cache = {}
         self._config_cpanel_dict = self._get_config()
-        self._build_header()
         self._displayed_frame = None
+        self._displayed_key = None
+
+        self._presets = _Presets(self, top_level)
+        self._build_header()
+
+    @property
+    def displayed_key(self):
+        """ str: The current display page's lookup key for configuration options. """
+        return self._displayed_key
+
+    @property
+    def config_dict(self):
+        """ dict: The configuration dictionary for all display pages. """
+        return self._config_cpanel_dict
 
     def _get_config(self):
         """ Format the configuration options stored in :attr:`_config` into a dict of
@@ -390,14 +431,14 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
             objects
         """
         logger.debug("Formatting Config for GUI")
-        retval = dict()
+        retval = {}
         for plugin, conf in self._configs.items():
             for section in conf.config.sections():
                 conf.section = section
                 category = section.split(".")[0]
                 sect = section.split(".")[-1]
                 # Elevate global to root
-                key = plugin if sect == "global" else "{}|{}|{}".format(plugin, category, sect)
+                key = plugin if sect == "global" else f"{plugin}|{category}|{sect}"
                 retval[key] = dict(helptext=None, options=OrderedDict())
 
                 for option, params in conf.defaults[section].items():
@@ -406,6 +447,10 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
                         continue
                     initial_value = conf.config_dict[option]
                     initial_value = "none" if initial_value is None else initial_value
+                    if params["type"] == list and isinstance(initial_value, list):
+                        # Split multi-select lists into space separated strings for tk variables
+                        initial_value = " ".join(initial_value)
+
                     retval[key]["options"][option] = ControlPanelOption(
                         title=option,
                         dtype=params["type"],
@@ -414,6 +459,7 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
                         initial_value=initial_value,
                         choices=params["choices"],
                         is_radio=params["gui_radio"],
+                        is_multi_option=params["type"] == list,
                         rounding=params["rounding"],
                         min_max=params["min_max"],
                         helptext=params["helptext"])
@@ -423,11 +469,33 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
     def _build_header(self):
         """ Build the dynamic header text. """
         header_frame = ttk.Frame(self)
+        lbl_frame = ttk.Frame(header_frame)
+
         var = tk.StringVar()
-        lbl = ttk.Label(header_frame, textvariable=var, anchor=tk.W, style="H2.TLabel")
+        lbl = ttk.Label(lbl_frame, textvariable=var, anchor=tk.W, style="SPanel.Header2.TLabel")
         lbl.pack(fill=tk.X, expand=True, side=tk.TOP)
-        header_frame.pack(fill=tk.X, padx=5, pady=(5, 0), side=tk.TOP)
+
+        self._build_presets_buttons(header_frame)
+        lbl_frame.pack(fill=tk.X, side=tk.LEFT, expand=True)
+        header_frame.pack(fill=tk.X, padx=5, pady=5, side=tk.TOP)
         self._vars["header"] = var
+
+    def _build_presets_buttons(self, frame):
+        """ Build the section that holds the preset load and save buttons.
+
+        Parameters
+        ----------
+        frame: :class:`ttk.Frame`
+            The frame that holds the preset buttons
+        """
+        presets_frame = ttk.Frame(frame)
+        for lbl in ("load", "save"):
+            btn = ttk.Button(presets_frame,
+                             image=get_images().icons[lbl],
+                             command=getattr(self._presets, lbl))
+            Tooltip(btn, text=_(f"{lbl.title()} preset for this plugin"), wrap_length=720)
+            btn.pack(padx=2, side=tk.LEFT)
+        presets_frame.pack(side=tk.RIGHT)
 
     def select_options(self, section, subsections):
         """ Display the page for the given section and subsections.
@@ -461,6 +529,7 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
             self._cache_page(key)
 
         self._displayed_frame = self._cache[key]
+        self._displayed_key = key
         self._displayed_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
 
     def _cache_page(self, key):
@@ -471,7 +540,6 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
         key: str
             The lookup key to the settings cache
         """
-        panel_kwargs = dict(columns=1, max_columns=1, option_columns=4, blank_nones=False)
         info = self._config_cpanel_dict.get(key, None)
         if info is None:
             logger.debug("key '%s' does not exist in options. Creating links page.", key)
@@ -480,7 +548,11 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
             self._cache[key] = ControlPanel(self,
                                             list(info["options"].values()),
                                             header_text=info["helptext"],
-                                            **panel_kwargs)
+                                            columns=1,
+                                            max_columns=1,
+                                            option_columns=4,
+                                            style="SPanel",
+                                            blank_nones=False)
 
     def _create_links_page(self, key):
         """ For headings which don't have settings, build a links page to the subsections.
@@ -498,16 +570,16 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
         if not links:
             return frame
 
-        header_lbl = ttk.Label(frame, text="Select a plugin to configure:")
+        header_lbl = ttk.Label(frame, text=_("Select a plugin to configure:"))
         header_lbl.pack(side=tk.TOP, fill=tk.X, padx=5, pady=(5, 10))
         for link in sorted(links):
             lbl = ttk.Label(frame,
                             text=link.replace("_", " ").title(),
                             anchor=tk.W,
-                            foreground="blue",
+                            foreground=self._theme["link_color"],
                             cursor="hand2")
             lbl.pack(side=tk.TOP, fill=tk.X, padx=10, pady=(0, 5))
-            bind = "{}|{}".format(key, link)
+            bind = f"{key}|{link}"
             lbl.bind("<Button-1>", lambda e, l=bind: self._link_callback(l))
 
         return frame
@@ -596,12 +668,14 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
                     # Get currently selected value
                     key = category
                     if section != "global":
-                        key += "|{}".format(section.replace(".", "|"))
+                        key += f"|{section.replace('.', '|')}"
                     new_opt = self._config_cpanel_dict[key]["options"][item].get()
                     logger.debug("Updating value to '%s' for %s",
                                  new_opt, ".".join([section, item]))
                 helptext = config.format_help(options["helptext"], is_section=False)
                 new_config.set(section, helptext)
+                if options["type"] == list:  # Comma separated multi select options
+                    new_opt = ", ".join(new_opt if isinstance(new_opt, list) else new_opt.split())
                 new_config.set(section, item, str(new_opt))
         config.config = new_config
         config.save_config()
@@ -614,3 +688,140 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
                 logger.info("Can't redraw GUI whilst a task is running. GUI Settings will be "
                             "applied at the next restart.")
         logger.debug("Saved config")
+
+
+class _Presets():
+    """ Handles the file dialog and loading and saving of plugin preset files.
+
+    Parameters
+    ----------
+    parent: :class:`ttk.Frame`
+        The parent display area frame
+    top_level: :class:`tkinter.Toplevel`
+        The top level pop up window
+    """
+    def __init__(self, parent, top_level):
+        logger.debug("Initializing: %s (top_level: %s)", self.__class__.__name__, top_level)
+        self._parent = parent
+        self._popup = top_level
+        self._base_path = os.path.join(PATHCACHE, "presets")
+        self._serializer = get_serializer("json")
+        logger.debug("Initialized: %s", self.__class__.__name__)
+
+    @property
+    def _preset_path(self):
+        """ str: The path to the default preset folder for the currently displayed plugin. """
+        return os.path.join(self._base_path, self._parent.displayed_key.split("|")[0])
+
+    @property
+    def _full_key(self):
+        """ str: The full extrapolated lookup key for the currently displayed page. """
+        full_key = self._parent.displayed_key
+        return full_key if "|" in full_key else f"{full_key}|global"
+
+    def load(self):
+        """ Action to perform when load preset button is pressed.
+
+        Loads parameters from a saved json file and updates the displayed page.
+        """
+        filename = self._get_filename("load")
+        if not filename:
+            return
+
+        opts = self._serializer.load(filename)
+        if opts.get("__filetype") != "faceswap_preset":
+            logger.warning("'%s' is not a valid plugin preset file", filename)
+            return
+        if opts.get("__section") != self._full_key:
+            logger.warning("You are attempting to load a preset for '%s' into '%s'. Aborted.",
+                           opts.get("__section", "no section"), self._full_key)
+            return
+
+        logger.debug("Loaded preset: %s", opts)
+
+        exist = self._parent.config_dict[self._parent.displayed_key]["options"]
+        for key, val in opts.items():
+            if key.startswith("__") or key not in exist:
+                logger.debug("Skipping non-existent item: '%s'", key)
+                continue
+            logger.debug("Setting '%s' to '%s'", key, val)
+            exist[key].set(val)
+        logger.info("Preset loaded from: '%s'", os.path.basename(filename))
+
+    def save(self):
+        """ Action to perform when save preset button is pressed.
+
+        Compiles currently displayed configuration options into a json file and saves into selected
+        location.
+        """
+        filename = self._get_filename("save")
+        if not filename:
+            return
+
+        opts = self._parent.config_dict[self._parent.displayed_key]["options"]
+        preset = {opt: val.get() for opt, val in opts.items()}
+        preset["__filetype"] = "faceswap_preset"
+        preset["__section"] = self._full_key
+        self._serializer.save(filename, preset)
+        logger.info("Preset '%s' saved to: '%s'", self._full_key, filename)
+
+    def _get_filename(self, action):
+        """ Obtain the filename for load and save preset actions.
+
+        Parameters
+        ----------
+        action: ["load", "save"]
+            The preset action that is being performed
+
+        Returns
+        -------
+        str: The requested preset filename
+        """
+        if not self._parent.config_dict.get(self._parent.displayed_key):
+            logger.info("No settings to %s for the current page.", action)
+            return None
+
+        args = ("save_filename", "json") if action == "save" else ("filename", "json")
+        kwargs = dict(title=f"{action.title()} Preset...",
+                      initial_folder=self._preset_path)
+        if action == "save":
+            kwargs["initial_file"] = self._get_initial_filename()
+
+        filename = FileHandler(*args, **kwargs).return_file
+        if not filename:
+            logger.debug("%s cancelled", action.title())
+
+        self._raise_toplevel()
+        return filename
+
+    def _get_initial_filename(self):
+        """ Obtain the initial filename for saving a preset.
+
+        The name is based on the plugin's display key. A scan of the default presets folder is done
+        to ensure no filename clash. If a filename does clash, then an integer is added to the end.
+
+        Returns
+        -------
+        str
+            The initial preset filename
+        """
+        _, key = self._full_key.split("|", 1)
+        base_filename = f"{key.replace('|', '_')}_preset"
+
+        i = 0
+        filename = f"{base_filename}.json"
+        while True:
+            if not os.path.exists(os.path.join(self._preset_path, filename)):
+                break
+            logger.debug("File pre-exists: %s", filename)
+            filename = f"{base_filename}_{i}.json"
+            i += 1
+        logger.debug("Initial filename: %s", filename)
+        return filename
+
+    def _raise_toplevel(self):
+        """ Opening a file dialog tends to hide the top level pop up, so bring back to the
+        fore. """
+        self._popup.update()
+        self._popup.deiconify()
+        self._popup.lift()

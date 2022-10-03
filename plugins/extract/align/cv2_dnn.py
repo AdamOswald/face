@@ -68,7 +68,7 @@ class Align(Aligner):
                    det_face.top,
                    det_face.right,
                    det_face.bottom)
-            diff_height_width = det_face.h - det_face.w
+            diff_height_width = det_face.height - det_face.width
             offset_y = int(abs(diff_height_width / 2))
             box_moved = self.move_box(box, [0, offset_y])
             # Make box square.
@@ -151,9 +151,9 @@ class Align(Aligner):
     def predict(self, batch):
         """ Predict the 68 point landmarks """
         logger.trace("Predicting Landmarks")
-        self.model.setInput(batch["feed"])
-        batch["prediction"] = self.model.forward()
-        return batch
+        self.model.setInput(batch)
+        retval = self.model.forward()
+        return retval
 
     def process_output(self, batch):
         """ Process the output from the model """

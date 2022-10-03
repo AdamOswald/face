@@ -1,5 +1,6 @@
+*************
 model package
-=============
+*************
 
 The Model Package handles interfacing with the neural network backend and holds custom objects.
 
@@ -7,7 +8,7 @@ The Model Package handles interfacing with the neural network backend and holds 
    :local:
 
 model.backup_restore module
----------------------------
+===========================
 
 .. automodule:: lib.model.backup_restore
    :members:
@@ -15,7 +16,7 @@ model.backup_restore module
    :show-inheritance:
 
 model.initializers module
--------------------------
+=========================
 
 .. rubric:: Module Summary
 
@@ -32,7 +33,7 @@ model.initializers module
    :show-inheritance:
 
 model.layers module
--------------------
+===================
 
 .. rubric:: Module Summary
 
@@ -52,10 +53,10 @@ model.layers module
    :show-inheritance:
 
 model.losses module
--------------------
+===================
 
 The losses listed here are generated from the docstrings in :mod:`lib.model.losses_tf`, however
-the functions are excactly the same for :mod:`lib.model.losses_plaid`. The correct loss module will
+the functions are exactly the same for :mod:`lib.model.losses_plaid`. The correct loss module will
 be imported as :mod:`lib.model.losses` depending on the backend in use.
 
 .. rubric:: Module Summary
@@ -63,20 +64,52 @@ be imported as :mod:`lib.model.losses` depending on the backend in use.
 .. autosummary::
    :nosignatures:
 
-   ~lib.model.losses_tf.DSSIMObjective
-   ~lib.model.losses_tf.PenalizedLoss
-   ~lib.model.losses_tf.GeneralizedLoss
-   ~lib.model.losses_tf.GMSDLoss
-   ~lib.model.losses_tf.GradientLoss
-   ~lib.model.losses_tf.LInfNorm
+   ~lib.model.loss.loss_tf.FocalFrequencyLoss
+   ~lib.model.loss.loss_tf.GeneralizedLoss
+   ~lib.model.loss.loss_tf.GradientLoss
+   ~lib.model.loss.loss_tf.LaplacianPyramidLoss
+   ~lib.model.loss.loss_tf.LInfNorm
+   ~lib.model.loss.loss_tf.LossWrapper
+   ~lib.model.loss.feature_loss_tf.LPIPSLoss
+   ~lib.model.loss.perceptual_loss_tf.DSSIMObjective
+   ~lib.model.loss.perceptual_loss_tf.GMSDLoss
+   ~lib.model.loss.perceptual_loss_tf.LDRFLIPLoss
+   ~lib.model.loss.perceptual_loss_tf.MSSIMLoss
 
-.. automodule:: lib.model.losses_tf
+.. automodule:: lib.model.loss.loss_tf
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: lib.model.loss.feature_loss_tf
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: lib.model.loss.perceptual_loss_tf
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+model.nets module
+=================
+
+.. rubric:: Module Summary
+
+.. autosummary::
+   :nosignatures:
+
+   ~lib.model.nets.AlexNet
+   ~lib.model.nets.SqueezeNet
+
+.. automodule:: lib.model.nets
    :members:
    :undoc-members:
    :show-inheritance:
 
 model.nn_blocks module
-----------------------
+======================
 
 .. rubric:: Module Summary
 
@@ -98,7 +131,7 @@ model.nn_blocks module
    :show-inheritance:
 
 model.normalization module
---------------------------
+==========================
 
 .. rubric:: Module Summary
 
@@ -112,11 +145,29 @@ model.normalization module
    :undoc-members:
    :show-inheritance:
 
+model.optimizers module
+=======================
+
+The optimizers listed here are generated from the docstrings in :mod:`lib.model.optimizers_tf`, however
+the functions are excactly the same for :mod:`lib.model.optimizers_plaid`. The correct optimizers module will
+be imported as :mod:`lib.model.optimizers` depending on the backend in use.
+
+.. rubric:: Module Summary
+
+.. autosummary::
+   :nosignatures:
+
+   ~lib.model.optimizers_tf.AdaBelief
+
+.. automodule:: lib.model.optimizers_tf
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 model.session module
----------------------
+=====================
 
 .. automodule:: lib.model.session
    :members:
    :undoc-members:
    :show-inheritance:
-

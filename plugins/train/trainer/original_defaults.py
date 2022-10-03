@@ -84,19 +84,11 @@ _DEFAULTS = dict(
         rounding=1,
         min_max=(0, 75),
         group="image augmentation"),
-    disable_warp=dict(
-        default=False,
-        info="Disable warp augmentation. Warping is integral to the Neural Network training. If "
-             "you decide to disable warping, you should only do so towards the end of a model's "
-             "training session.",
-        datatype=bool,
-        group="image augmentation",
-        fixed=False),
 
     color_lightness=dict(
         default=30,
         info="Percentage amount to randomly alter the lightness of each training image.\n"
-             "NB: This is ignored if the 'no-flip' option is enabled",
+             "NB: This is ignored if the 'no-augment-color' option is enabled",
         datatype=int,
         rounding=1,
         min_max=(0, 75),
@@ -104,8 +96,8 @@ _DEFAULTS = dict(
     color_ab=dict(
         default=8,
         info="Percentage amount to randomly alter the 'a' and 'b' colors of the L*a*b* color "
-             "space of each training image.\nNB: This is ignored if the 'no-flip' option is "
-             "enabled",
+             "space of each training image.\nNB: This is ignored if the 'no-augment-color' option"
+             "is enabled",
         datatype=int,
         rounding=1,
         min_max=(0, 50),

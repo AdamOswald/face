@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """ Landmarks Editor and Landmarks Mesh viewer for the manual adjustments tool """
+import gettext
 import numpy as np
 
+from lib.align import AlignedFace
 from ._base import Editor, logger
+
+# LOCALES
+_LANG = gettext.translation("tools.manual", localedir="locales", fallback=True)
+_ = _LANG.gettext
 
 
 class Landmarks(Editor):
@@ -18,9 +24,9 @@ class Landmarks(Editor):
         The _detected_faces data for this manual session
     """
     def __init__(self, canvas, detected_faces):
-        control_text = ("Landmark Point Editor\nEdit the individual landmark points.\n\n"
-                        " - Click and drag individual points to relocate.\n"
-                        " - Draw a box to select multiple points to relocate.")
+        control_text = _("Landmark Point Editor\nEdit the individual landmark points.\n\n"
+                         " - Click and drag individual points to relocate.\n"
+                         " - Draw a box to select multiple points to relocate.")
         self._selection_box = canvas.create_rectangle(0, 0, 0, 0,
                                                       dash=(2, 4),
                                                       state="hidden",
@@ -35,7 +41,8 @@ class Landmarks(Editor):
     def _add_actions(self):
         """ Add the optional action buttons to the viewer. Current actions are Point, Select
         and Zoom. """
-        self._add_action("magnify", "zoom", "Magnify/Demagnify the View", group=None, hotkey="M")
+        self._add_action("magnify", "zoom", _("Magnify/Demagnify the View"),
+                         group=None, hotkey="M")
         self._actions["magnify"]["tk_var"].trace("w", self._toggle_zoom)
 
     # CALLBACKS
@@ -70,7 +77,10 @@ class Landmarks(Editor):
         for face_idx, face in enumerate(self._face_iterator):
             face_index = self._globals.face_index if self._globals.is_zoomed else face_idx
             if self._globals.is_zoomed:
-                landmarks = face.aligned_landmarks + zoomed_offset
+                aligned = AlignedFace(face.landmarks_xy,
+                                      centering="face",
+                                      size=min(self._globals.frame_display_dims))
+                landmarks = aligned.landmarks + zoomed_offset
                 # Hide all landmarks and only display selected
                 self._canvas.itemconfig("lm_dsp", state="hidden")
                 self._canvas.itemconfig("lm_dsp_face_{}".format(face_index), state="normal")
@@ -438,7 +448,10 @@ class Mesh(Editor):
         for face_idx, face in enumerate(self._face_iterator):
             face_index = self._globals.face_index if self._globals.is_zoomed else face_idx
             if self._globals.is_zoomed:
-                landmarks = face.aligned_landmarks + zoomed_offset
+                aligned = AlignedFace(face.landmarks_xy,
+                                      centering="face",
+                                      size=min(self._globals.frame_display_dims))
+                landmarks = aligned.landmarks + zoomed_offset
                 # Hide all meshes and only display selected
                 self._canvas.itemconfig("Mesh", state="hidden")
                 self._canvas.itemconfig("Mesh_face_{}".format(face_index), state="normal")

@@ -21,6 +21,8 @@ class Converter():
         The size of the face, in pixels, that is output from the Faceswap model
     coverage_ratio: float
         The ratio of the training image that was used for training the Faceswap model
+    centering: str
+        The extracted face centering that the model was trained on (`"face"` or "`legacy`")
     draw_transparent: bool
         Whether the final output should be drawn onto a transparent layer rather than the original
         frame. Only available with certain writer plugins.
@@ -35,21 +37,22 @@ class Converter():
         Optional location of custom configuration ``ini`` file. If ``None`` then use the default
         config location. Default: ``None``
     """
-    def __init__(self, output_size, coverage_ratio, draw_transparent, pre_encode,
+    def __init__(self, output_size, coverage_ratio, centering, draw_transparent, pre_encode,
                  arguments, configfile=None):
-        logger.debug("Initializing %s: (output_size: %s,  coverage_ratio: %s, draw_transparent: "
-                     "%s, pre_encode: %s, arguments: %s, configfile: %s)", self.__class__.__name__,
-                     output_size, coverage_ratio, draw_transparent, pre_encode, arguments,
-                     configfile)
+        logger.debug("Initializing %s: (output_size: %s,  coverage_ratio: %s, centering: %s, "
+                     "draw_transparent: %s, pre_encode: %s, arguments: %s, configfile: %s)",
+                     self.__class__.__name__, output_size, coverage_ratio, centering,
+                     draw_transparent, pre_encode, arguments, configfile)
         self._output_size = output_size
         self._coverage_ratio = coverage_ratio
+        self._centering = centering
         self._draw_transparent = draw_transparent
         self._writer_pre_encode = pre_encode
         self._args = arguments
         self._configfile = configfile
 
         self._scale = arguments.output_scale / 100
-        self._adjustments = dict(box=None, mask=None, color=None, seamless=None, sharpening=None)
+        self._adjustments = dict(mask=None, color=None, seamless=None, sharpening=None)
 
         self._load_plugins()
         logger.debug("Initialized %s", self.__class__.__name__)
@@ -72,7 +75,7 @@ class Converter():
             Pre-loaded :class:`lib.config.FaceswapConfig`. used over any configuration on disk.
         """
         logger.debug("Reinitializing converter")
-        self._adjustments = dict(box=None, mask=None, color=None, seamless=None, sharpening=None)
+        self._adjustments = dict(mask=None, color=None, seamless=None, sharpening=None)
         self._load_plugins(config=config, disable_logging=True)
         logger.debug("Reinitialized converter")
 
@@ -92,13 +95,6 @@ class Converter():
             suppress these messages otherwise ``False``. Default: ``False``
         """
         logger.debug("Loading plugins. config: %s", config)
-        self._adjustments["box"] = PluginLoader.get_converter(
-            "mask",
-            "box_blend",
-            disable_logging=disable_logging)(self._output_size,
-                                             configfile=self._configfile,
-                                             config=config)
-
         self._adjustments["mask"] = PluginLoader.get_converter(
             "mask",
             "mask_blend",
@@ -139,6 +135,7 @@ class Converter():
         """
         logger.debug("Starting convert process. (in_queue: %s, out_queue: %s)",
                      in_queue, out_queue)
+        log_once = False
         while True:
             items = in_queue.get()
             if items == "EOF":
@@ -160,9 +157,13 @@ class Converter():
                     logger.error("Failed to convert image: '%s'. Reason: %s",
                                  item["filename"], str(err))
                     image = item["image"]
+
+                    loglevel = logger.trace if log_once else logger.warning
+                    loglevel("Convert error traceback:", exc_info=True)
+                    log_once = True
                     # UNCOMMENT THIS CODE BLOCK TO PRINT TRACEBACK ERRORS
-                    # import sys ; import traceback
-                    # exc_info = sys.exc_info() ; traceback.print_exception(*exc_info)
+                    # import sys; import traceback
+                    # exc_info = sys.exc_info(); traceback.print_exception(*exc_info)
                 logger.trace("Out queue put: %s", item["filename"])
                 out_queue.put((item["filename"], image))
         logger.debug("Completed convert process")
@@ -226,17 +227,21 @@ class Converter():
         background = predicted["image"] / np.array(255.0, dtype="float32")
         placeholder[:, :, :3] = background
 
-        for new_face, detected_face in zip(predicted["swapped_faces"],
-                                           predicted["detected_faces"]):
+        for new_face, detected_face, reference_face in zip(predicted["swapped_faces"],
+                                                           predicted["detected_faces"],
+                                                           predicted["reference_faces"]):
             predicted_mask = new_face[:, :, -1] if new_face.shape[2] == 4 else None
             new_face = new_face[:, :, :3]
-            interpolator = detected_face.reference_interpolators[1]
+            interpolator = reference_face.interpolators[1]
 
-            new_face = self._pre_warp_adjustments(new_face, detected_face, predicted_mask)
+            new_face = self._pre_warp_adjustments(new_face,
+                                                  detected_face,
+                                                  reference_face,
+                                                  predicted_mask)
 
             # Warp face with the mask
             cv2.warpAffine(new_face,
-                           detected_face.reference_matrix,
+                           reference_face.adjusted_matrix,
                            frame_size,
                            placeholder,
                            flags=cv2.WARP_INVERSE_MAP | interpolator,
@@ -247,7 +252,7 @@ class Converter():
 
         return placeholder, background
 
-    def _pre_warp_adjustments(self, new_face, detected_face, predicted_mask):
+    def _pre_warp_adjustments(self, new_face, detected_face, reference_face, predicted_mask):
         """ Run any requested adjustments that can be performed on the raw output from the Faceswap
         model.
 
@@ -258,8 +263,10 @@ class Converter():
         ----------
         new_face: :class:`numpy.ndarray`
             The swapped face received from the faceswap model.
-        detected_face: :class:`~lib.faces_detect.DetectedFace`
+        detected_face: :class:`~lib.align.DetectedFace`
             The detected_face object as defined in :class:`scripts.convert.Predictor`
+        reference_face: :class:`~lib.align.AlignedFace`
+            The aligned face object sized to the model output of the original face for reference
         predicted_mask: :class:`numpy.ndarray` or ``None``
             The predicted mask output from the Faceswap model. ``None`` if the model
             did not learn a mask
@@ -272,9 +279,11 @@ class Converter():
         """
         logger.trace("new_face shape: %s, predicted_mask shape: %s", new_face.shape,
                      predicted_mask.shape if predicted_mask is not None else None)
-        old_face = detected_face.reference_face[..., :3] / 255.0
-        new_face = self._adjustments["box"].run(new_face)
-        new_face, raw_mask = self._get_image_mask(new_face, detected_face, predicted_mask)
+        old_face = reference_face.face[..., :3] / 255.0
+        new_face, raw_mask = self._get_image_mask(new_face,
+                                                  detected_face,
+                                                  predicted_mask,
+                                                  reference_face)
         if self._adjustments["color"] is not None:
             new_face = self._adjustments["color"].run(old_face, new_face, raw_mask)
         if self._adjustments["seamless"] is not None:
@@ -282,34 +291,40 @@ class Converter():
         logger.trace("returning: new_face shape %s", new_face.shape)
         return new_face
 
-    def _get_image_mask(self, new_face, detected_face, predicted_mask):
-        """ Return any selected image mask and intersect with any box mask.
+    def _get_image_mask(self, new_face, detected_face, predicted_mask, reference_face):
+        """ Return any selected image mask
 
-        Places the requested mask into the new face's Alpha channel, intersecting with any box
-        mask that has already been applied.
+        Places the requested mask into the new face's Alpha channel.
 
         Parameters
         ----------
         new_face: :class:`numpy.ndarray`
-            The swapped face received from the faceswap model, with any box mask applied
-        detected_face: :class:`~lib.faces_detect.DetectedFace`
+            The swapped face received from the faceswap model.
+        detected_face: :class:`~lib.DetectedFace`
             The detected_face object as defined in :class:`scripts.convert.Predictor`
         predicted_mask: :class:`numpy.ndarray` or ``None``
             The predicted mask output from the Faceswap model. ``None`` if the model
             did not learn a mask
+        reference_face: :class:`~lib.align.AlignedFace`
+            The aligned face object sized to the model output of the original face for reference
 
         Returns
+        -------
         :class:`numpy.ndarray`
             The swapped face with the requested mask added to the Alpha channel
         """
         logger.trace("Getting mask. Image shape: %s", new_face.shape)
-        mask, raw_mask = self._adjustments["mask"].run(detected_face, predicted_mask)
-        if new_face.shape[2] == 4:
-            logger.trace("Combining mask with alpha channel box mask")
-            new_face[:, :, -1] = np.minimum(new_face[:, :, -1], mask.squeeze())
+        if self._args.mask_type not in ("none", "predicted"):
+            mask_centering = detected_face.mask[self._args.mask_type].stored_centering
         else:
-            logger.trace("Adding mask to alpha channel")
-            new_face = np.concatenate((new_face, mask), -1)
+            mask_centering = "face"  # Unused but requires a valid value
+        mask, raw_mask = self._adjustments["mask"].run(detected_face,
+                                                       reference_face.pose.offset[mask_centering],
+                                                       reference_face.pose.offset[self._centering],
+                                                       self._centering,
+                                                       predicted_mask=predicted_mask)
+        logger.trace("Adding mask to alpha channel")
+        new_face = np.concatenate((new_face, mask), -1)
         logger.trace("Got mask. Image shape: %s", new_face.shape)
         return new_face, raw_mask
 

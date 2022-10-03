@@ -7,14 +7,22 @@
     Additional thanks: Birb - source of inspiration, great Encoder ideas
                        Kvrooman - additional counseling on auto-encoders and practical advice
     """
+import logging
 import sys
 
-from keras.initializers import RandomNormal
-from keras.layers import Dense, Flatten, Input, Reshape
-
-
 from lib.model.nn_blocks import Conv2DOutput, Conv2DBlock, ResidualBlock, UpscaleBlock
-from ._base import ModelBase, KerasModel, logger
+from lib.utils import get_backend
+from ._base import ModelBase, KerasModel
+
+if get_backend() == "amd":
+    from keras.initializers import RandomNormal  # pylint:disable=no-name-in-module
+    from keras.layers import Dense, Flatten, Input, LeakyReLU, Reshape
+else:
+    # Ignore linting errors from Tensorflow's thoroughly broken import system
+    from tensorflow.keras.initializers import RandomNormal  # noqa pylint:disable=import-error,no-name-in-module
+    from tensorflow.keras.layers import Dense, Flatten, Input, LeakyReLU, Reshape  # noqa pylint:disable=import-error,no-name-in-module
+
+logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
 class Model(ModelBase):
@@ -72,7 +80,7 @@ class Model(ModelBase):
 
         outputs = [self.decoder_a()(encoder_a), self.decoder_b()(encoder_b)]
 
-        autoencoder = KerasModel(inputs, outputs, name=self.name)
+        autoencoder = KerasModel(inputs, outputs, name=self.model_name)
         return autoencoder
 
     def encoder(self):
@@ -83,11 +91,12 @@ class Model(ModelBase):
         encoder_complexity = self.config["complexity_encoder"]
 
         for idx in range(self.downscalers_no - 1):
-            var_x = Conv2DBlock(encoder_complexity * 2**idx)(var_x)
+            var_x = Conv2DBlock(encoder_complexity * 2**idx, activation=None)(var_x)
+            var_x = LeakyReLU(alpha=0.2)(var_x)
             var_x = ResidualBlock(encoder_complexity * 2**idx, use_bias=True)(var_x)
             var_x = ResidualBlock(encoder_complexity * 2**idx, use_bias=True)(var_x)
 
-        var_x = Conv2DBlock(encoder_complexity * 2**(idx + 1))(var_x)
+        var_x = Conv2DBlock(encoder_complexity * 2**(idx + 1), activation="leakyrelu")(var_x)
 
         return KerasModel(input_, var_x, name="encoder")
 
@@ -102,17 +111,19 @@ class Model(ModelBase):
         var_xy = Dense(self.config["dense_nodes"])(Flatten()(var_xy))
         var_xy = Dense(self.dense_width * self.dense_width * self.dense_filters)(var_xy)
         var_xy = Reshape((self.dense_width, self.dense_width, self.dense_filters))(var_xy)
-        var_xy = UpscaleBlock(self.dense_filters)(var_xy)
+        var_xy = UpscaleBlock(self.dense_filters, activation=None)(var_xy)
 
         var_x = var_xy
+        var_x = LeakyReLU(alpha=0.2)(var_x)
         var_x = ResidualBlock(self.dense_filters, use_bias=False)(var_x)
 
         decoder_b_complexity = self.config["complexity_decoder"]
         for idx in range(self.upscalers_no - 2):
-            var_x = UpscaleBlock(decoder_b_complexity // 2**idx)(var_x)
+            var_x = UpscaleBlock(decoder_b_complexity // 2**idx, activation=None)(var_x)
+            var_x = LeakyReLU(alpha=0.2)(var_x)
             var_x = ResidualBlock(decoder_b_complexity // 2**idx, use_bias=False)(var_x)
             var_x = ResidualBlock(decoder_b_complexity // 2**idx, use_bias=True)(var_x)
-        var_x = UpscaleBlock(decoder_b_complexity // 2**(idx + 1))(var_x)
+        var_x = UpscaleBlock(decoder_b_complexity // 2**(idx + 1), activation="leakyrelu")(var_x)
 
         var_x = Conv2DOutput(3, 5, name="face_out_b")(var_x)
 
@@ -120,10 +131,12 @@ class Model(ModelBase):
 
         if self.config.get("learn_mask", False):
             var_y = var_xy
+            var_y = LeakyReLU(alpha=0.1)(var_y)
+
             mask_b_complexity = 384
             for idx in range(self.upscalers_no-2):
-                var_y = UpscaleBlock(mask_b_complexity // 2**idx)(var_y)
-            var_y = UpscaleBlock(mask_b_complexity // 2**(idx + 1))(var_y)
+                var_y = UpscaleBlock(mask_b_complexity // 2**idx, activation="leakyrelu")(var_y)
+            var_y = UpscaleBlock(mask_b_complexity // 2**(idx + 1), activation="leakyrelu")(var_y)
 
             var_y = Conv2DOutput(1, 5, name="mask_out_b")(var_y)
 
@@ -146,15 +159,16 @@ class Model(ModelBase):
         var_xy = Dense(self.dense_width * self.dense_width * dense_filters)(var_xy)
         var_xy = Reshape((self.dense_width, self.dense_width, dense_filters))(var_xy)
 
-        var_xy = UpscaleBlock(dense_filters)(var_xy)
+        var_xy = UpscaleBlock(dense_filters, activation=None)(var_xy)
 
         var_x = var_xy
+        var_x = LeakyReLU(alpha=0.2)(var_x)
         var_x = ResidualBlock(dense_filters, use_bias=False)(var_x)
 
         decoder_a_complexity = int(self.config["complexity_decoder"] / 1.5)
         for idx in range(self.upscalers_no-2):
-            var_x = UpscaleBlock(decoder_a_complexity // 2**idx)(var_x)
-        var_x = UpscaleBlock(decoder_a_complexity // 2**(idx + 1))(var_x)
+            var_x = UpscaleBlock(decoder_a_complexity // 2**idx, activation="leakyrelu")(var_x)
+        var_x = UpscaleBlock(decoder_a_complexity // 2**(idx + 1), activation="leakyrelu")(var_x)
 
         var_x = Conv2DOutput(3, 5, name="face_out_a")(var_x)
 
@@ -162,10 +176,12 @@ class Model(ModelBase):
 
         if self.config.get("learn_mask", False):
             var_y = var_xy
+            var_y = LeakyReLU(alpha=0.1)(var_y)
+
             mask_a_complexity = 384
             for idx in range(self.upscalers_no-2):
-                var_y = UpscaleBlock(mask_a_complexity // 2**idx)(var_y)
-            var_y = UpscaleBlock(mask_a_complexity // 2**(idx + 1))(var_y)
+                var_y = UpscaleBlock(mask_a_complexity // 2**idx, activation="leakyrelu")(var_y)
+            var_y = UpscaleBlock(mask_a_complexity // 2**(idx + 1), activation="leakyrelu")(var_y)
 
             var_y = Conv2DOutput(1, 5, name="mask_out_a")(var_y)
 
@@ -175,6 +191,6 @@ class Model(ModelBase):
 
     def _legacy_mapping(self):
         """ The mapping of legacy separate model names to single model names """
-        return {"{}_encoder.h5".format(self.name): "encoder",
-                "{}_decoder_A.h5".format(self.name): "decoder_a",
-                "{}_decoder_B.h5".format(self.name): "decoder_b"}
+        return {f"{self.name}_encoder.h5": "encoder",
+                f"{self.name}_decoder_A.h5": "decoder_a",
+                f"{self.name}_decoder_B.h5": "decoder_b"}

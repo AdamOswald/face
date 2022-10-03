@@ -11,16 +11,16 @@ For each source frame, the plugin must pass a dict to finalize containing:
 >>> {'filename': <filename of source frame>,
 >>>  'detected_faces': <list of DetectedFace objects containing bounding box points}}
 
-To get a :class:`~lib.faces_detect.DetectedFace` object use the function:
+To get a :class:`~lib.align.DetectedFace` object use the function:
 
 >>> face = self.to_detected_face(<face left>, <face top>, <face right>, <face bottom>)
 """
 import cv2
 import numpy as np
 
-from tensorflow.python import errors_impl as tf_errors  # pylint:disable=no-name-in-module
+from tensorflow.python.framework import errors_impl as tf_errors  # pylint:disable=no-name-in-module # noqa
 
-from lib.faces_detect import DetectedFace
+from lib.align import DetectedFace
 from lib.utils import get_backend, FaceswapError
 
 from plugins.extract._base import Extractor, logger
@@ -96,7 +96,7 @@ class Detector(Extractor):  # pylint:disable=abstract-method
         >>>  'image': <numpy.ndarray of images standardized for prediction>,
         >>>  'scale': [<scaling factors for each image>],
         >>>  'pad': [<padding for each image>],
-        >>>  'detected_faces': [[<lib.faces_detect.DetectedFace objects]]}
+        >>>  'detected_faces': [[<lib.align.DetectedFace objects]]}
 
         Parameters
         ----------
@@ -112,7 +112,7 @@ class Detector(Extractor):  # pylint:disable=abstract-method
             A dictionary of lists of :attr:`~plugins.extract._base.Extractor.batchsize`.
         """
         exhausted = False
-        batch = dict()
+        batch = {}
         for _ in range(self.batchsize):
             item = self._get_item(queue)
             if item == "EOF":
@@ -193,11 +193,11 @@ class Detector(Extractor):  # pylint:disable=abstract-method
 
     @staticmethod
     def to_detected_face(left, top, right, bottom):
-        """ Return a :class:`~lib.faces_detect.DetectedFace` object for the bounding box """
-        return DetectedFace(x=int(round(left)),
-                            w=int(round(right - left)),
-                            y=int(round(top)),
-                            h=int(round(bottom - top)))
+        """ Return a :class:`~lib.align.DetectedFace` object for the bounding box """
+        return DetectedFace(left=int(round(left)),
+                            width=int(round(right - left)),
+                            top=int(round(top)),
+                            height=int(round(bottom - top)))
 
     # <<< PROTECTED ACCESS METHODS >>> #
     # <<< PREDICT WRAPPER >>> #
@@ -332,7 +332,7 @@ class Detector(Extractor):  # pylint:disable=abstract-method
         for faces in detected_faces:
             this_image = []
             for face in faces:
-                face_size = (face.w ** 2 + face.h ** 2) ** 0.5
+                face_size = (face.width ** 2 + face.height ** 2) ** 0.5
                 if face_size < self.min_size:
                     logger.debug("Removing detected face: (face_size: %s, min_size: %s",
                                  face_size, self.min_size)
@@ -382,7 +382,7 @@ class Detector(Extractor):  # pylint:disable=abstract-method
             batch["initial_feed"] = batch["feed"].copy()
             return
 
-        retval = dict()
+        retval = {}
         for img, faces, rotmat in zip(batch["initial_feed"], batch["prediction"], batch["rotmat"]):
             if faces.any():
                 image = np.zeros_like(img)
@@ -431,10 +431,10 @@ class Detector(Extractor):  # pylint:disable=abstract-method
         width = pt_x1 - pt_x
         height = pt_y1 - pt_y
 
-        face.x = int(pt_x)
-        face.y = int(pt_y)
-        face.w = int(width)
-        face.h = int(height)
+        face.left = int(pt_x)
+        face.top = int(pt_y)
+        face.width = int(width)
+        face.height = int(height)
         return face
 
     def _rotate_image_by_angle(self, image, angle):

@@ -13,7 +13,7 @@ import numpy as np
 
 from lib.gui.control_helper import ControlPanel
 from lib.gui.utils import get_images, get_config, initialize_config, initialize_images
-from lib.image import SingleFrameLoader
+from lib.image import SingleFrameLoader, read_image_meta
 from lib.multithreading import MultiThread
 from lib.utils import _video_extensions
 from plugins.extract.pipeline import Extractor, ExtractMedia
@@ -41,6 +41,8 @@ class Manual(tk.Tk):
     def __init__(self, arguments):
         logger.debug("Initializing %s: (arguments: '%s')", self.__class__.__name__, arguments)
         super().__init__()
+        self._validate_non_faces(arguments.frames)
+
         self._initialize_tkinter()
         self._globals = TkGlobals(arguments.frames)
 
@@ -51,11 +53,18 @@ class Manual(tk.Tk):
                                              extractor)
 
         video_meta_data = self._detected_faces.video_meta_data
-        loader = FrameLoader(self._globals, arguments.frames, video_meta_data)
+        valid_meta = all(val is not None for val in video_meta_data.values())
 
-        self._detected_faces.load_faces()
+        loader = FrameLoader(self._globals, arguments.frames, video_meta_data)
+        if valid_meta:  # Load the faces whilst other threads complete if we have valid meta data
+            self._detected_faces.load_faces()
+
         self._containers = self._create_containers()
-        self._wait_for_threads(extractor, loader, video_meta_data)
+        self._wait_for_threads(extractor, loader, valid_meta)
+        if not valid_meta:
+            # Load the faces after other threads complete if meta data required updating
+            self._detected_faces.load_faces()
+
         self._generate_thumbs(arguments.frames, arguments.thumb_regen, arguments.single_process)
 
         self._display = DisplayFrame(self._containers["top"],
@@ -73,7 +82,31 @@ class Manual(tk.Tk):
         self._set_initial_layout()
         logger.debug("Initialized %s", self.__class__.__name__)
 
-    def _wait_for_threads(self, extractor, loader, video_meta_data):
+    @classmethod
+    def _validate_non_faces(cls, frames_folder):
+        """ Quick check on the input to make sure that a folder of extracted faces is not being
+        passed in. """
+        if not os.path.isdir(frames_folder):
+            logger.debug("Input '%s' is not a folder", frames_folder)
+            return
+        test_file = next((fname
+                          for fname in os.listdir(frames_folder)
+                          if os.path.splitext(fname)[-1].lower() == ".png"),
+                         None)
+        if not test_file:
+            logger.debug("Input '%s' does not contain any .pngs", frames_folder)
+            return
+        test_file = os.path.join(frames_folder, test_file)
+        meta = read_image_meta(test_file)
+        logger.debug("Test file: (filename: %s, metadata: %s)", test_file, meta)
+        if "itxt" in meta and "alignments" in meta["itxt"]:
+            logger.error("The input folder '%s' contains extracted faces.", frames_folder)
+            logger.error("The Manual Tool works with source frames or a video file, not extracted "
+                         "faces. Please update your input.")
+            sys.exit(1)
+        logger.debug("Test input file '%s' does not contain Faceswap header data", test_file)
+
+    def _wait_for_threads(self, extractor, loader, valid_meta):
         """ The :class:`Aligner` and :class:`FramesLoader` are launched in background threads.
         Wait for them to be initialized prior to proceeding.
 
@@ -83,8 +116,9 @@ class Manual(tk.Tk):
             The extraction pipeline for the Manual Tool
         loader: :class:`FramesLoader`
             The frames loader for the Manual Tool
-        video_meta_data: dict
-            The video meta data that exists within the alignments file
+        valid_meta: bool
+            Whether the input video had valid meta-data on import, or if it had to be created.
+            ``True`` if valid meta data existed previously, ``False`` if it needed to be created
 
         Notes
         -----
@@ -103,7 +137,7 @@ class Manual(tk.Tk):
             sleep(1)
 
         extractor.link_faces(self._detected_faces)
-        if any(val is None for val in video_meta_data.values()):
+        if not valid_meta:
             logger.debug("Saving video meta data to alignments file")
             self._detected_faces.save_video_meta_data(**loader.video_meta_data)
 
@@ -148,12 +182,9 @@ class Manual(tk.Tk):
             The main containers of the manual tool.
         """
         logger.debug("Creating containers")
-        main = tk.PanedWindow(self,
-                              sashrelief=tk.RIDGE,
-                              sashwidth=2,
-                              sashpad=4,
-                              orient=tk.VERTICAL,
-                              name="pw_main")
+        main = ttk.PanedWindow(self,
+                               orient=tk.VERTICAL,
+                               name="pw_main")
         main.pack(fill=tk.BOTH, expand=True)
 
         top = ttk.Frame(main, name="frame_top")
@@ -231,7 +262,7 @@ class Manual(tk.Tk):
                      "iconphoto",
                      self._w, get_images().icons["favicon"])  # pylint:disable=protected-access
         location = int(self.winfo_screenheight() // 1.5)
-        self._containers["main"].sash_place(0, 1, location)
+        self._containers["main"].sashpos(0, location)
         self.update_idletasks()
 
     def process(self):
@@ -295,6 +326,7 @@ class _Options(ttk.Frame):  # pylint:disable=too-many-ancestors
                                  header_text=controls["header"],
                                  blank_nones=False,
                                  label_width=18,
+                                 style="CPanel",
                                  scrollbar=False)
             panel.pack_forget()
             panels[name] = panel
@@ -390,9 +422,9 @@ class TkGlobals():
             The variable name as key, the variable as value
         """
         retval = dict()
-        for name in ("frame_index", "transport_index", "face_index"):
+        for name in ("frame_index", "transport_index", "face_index", "filter_distance"):
             var = tk.IntVar()
-            var.set(0)
+            var.set(10 if name == "filter_distance" else 0)
             retval[name] = var
         for name in ("update", "update_active_viewport", "is_zoomed"):
             var = tk.BooleanVar()
@@ -470,6 +502,12 @@ class TkGlobals():
         """ :class:`tkinter.StringVar`: The variable holding the currently selected navigation
         filter mode. """
         return self._tk_vars["filter_mode"]
+
+    @property
+    def tk_filter_distance(self):
+        """ :class:`tkinter.DoubleVar`: The variable holding the currently selected threshold
+        distance for misaligned filter mode. """
+        return self._tk_vars["filter_distance"]
 
     @property
     def tk_faces_size(self):
@@ -685,7 +723,7 @@ class Aligner():
         Parameters
         ----------
         detected_faces: :class:`~tools.manual.detected_faces.DetectedFaces`
-            The class that holds the :class:`~lib.faces_detect.DetectedFace` objects for the
+            The class that holds the :class:`~lib.align.DetectedFace` objects for the
             current Manual session
         """
         logger.debug("Linking detected_faces: %s", detected_faces)

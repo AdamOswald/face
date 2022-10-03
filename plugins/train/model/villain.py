@@ -3,13 +3,20 @@
     Based on the original https://www.reddit.com/r/deepfakes/ code sample + contributions
     Adapted from a model by VillainGuy (https://github.com/VillainGuy) """
 
-from keras.initializers import RandomNormal
-from keras.layers import add, Dense, Flatten, Input, Reshape
-
 from lib.model.layers import PixelShuffler
 from lib.model.nn_blocks import (Conv2DOutput, Conv2DBlock, ResidualBlock, SeparableConv2DBlock,
                                  UpscaleBlock)
+from lib.utils import get_backend
+
 from .original import Model as OriginalModel, KerasModel
+
+if get_backend() == "amd":
+    from keras.initializers import RandomNormal  # pylint:disable=no-name-in-module
+    from keras.layers import add, Dense, Flatten, Input, LeakyReLU, Reshape
+else:
+    # Ignore linting errors from Tensorflow's thoroughly broken import system
+    from tensorflow.keras.initializers import RandomNormal  # noqa pylint:disable=import-error,no-name-in-module
+    from tensorflow.keras.layers import add, Dense, Flatten, Input, LeakyReLU, Reshape  # noqa pylint:disable=import-error,no-name-in-module
 
 
 class Model(OriginalModel):
@@ -29,28 +36,31 @@ class Model(OriginalModel):
             in_conv_filters = 128 + (self.input_shape[0] - 128) // 4
         dense_shape = self.input_shape[0] // 16
 
-        var_x = Conv2DBlock(in_conv_filters, res_block_follows=True, **kwargs)(input_)
+        var_x = Conv2DBlock(in_conv_filters, activation=None, **kwargs)(input_)
         tmp_x = var_x
+
+        var_x = LeakyReLU(alpha=0.2)(var_x)
         res_cycles = 8 if self.config.get("lowmem", False) else 16
         for _ in range(res_cycles):
             nn_x = ResidualBlock(in_conv_filters, **kwargs)(var_x)
             var_x = nn_x
         # consider adding scale before this layer to scale the residual chain
+        tmp_x = LeakyReLU(alpha=0.1)(tmp_x)
         var_x = add([var_x, tmp_x])
-        var_x = Conv2DBlock(128, **kwargs)(var_x)
+        var_x = Conv2DBlock(128, activation="leakyrelu", **kwargs)(var_x)
         var_x = PixelShuffler()(var_x)
-        var_x = Conv2DBlock(128, **kwargs)(var_x)
+        var_x = Conv2DBlock(128, activation="leakyrelu", **kwargs)(var_x)
         var_x = PixelShuffler()(var_x)
-        var_x = Conv2DBlock(128, **kwargs)(var_x)
+        var_x = Conv2DBlock(128, activation="leakyrelu", **kwargs)(var_x)
         var_x = SeparableConv2DBlock(256, **kwargs)(var_x)
-        var_x = Conv2DBlock(512, **kwargs)(var_x)
+        var_x = Conv2DBlock(512, activation="leakyrelu", **kwargs)(var_x)
         if not self.config.get("lowmem", False):
             var_x = SeparableConv2DBlock(1024, **kwargs)(var_x)
 
         var_x = Dense(self.encoder_dim, **kwargs)(Flatten()(var_x))
         var_x = Dense(dense_shape * dense_shape * 1024, **kwargs)(var_x)
         var_x = Reshape((dense_shape, dense_shape, 1024))(var_x)
-        var_x = UpscaleBlock(512, **kwargs)(var_x)
+        var_x = UpscaleBlock(512, activation="leakyrelu", **kwargs)(var_x)
         return KerasModel(input_, var_x, name="encoder")
 
     def decoder(self, side):
@@ -60,20 +70,23 @@ class Model(OriginalModel):
         input_ = Input(shape=(decoder_shape, decoder_shape, 512))
 
         var_x = input_
-        var_x = UpscaleBlock(512, res_block_follows=True, **kwargs)(var_x)
+        var_x = UpscaleBlock(512, activation=None, **kwargs)(var_x)
+        var_x = LeakyReLU(alpha=0.2)(var_x)
         var_x = ResidualBlock(512, **kwargs)(var_x)
-        var_x = UpscaleBlock(256, res_block_follows=True, **kwargs)(var_x)
+        var_x = UpscaleBlock(256, activation=None, **kwargs)(var_x)
+        var_x = LeakyReLU(alpha=0.2)(var_x)
         var_x = ResidualBlock(256, **kwargs)(var_x)
-        var_x = UpscaleBlock(self.input_shape[0], res_block_follows=True, **kwargs)(var_x)
+        var_x = UpscaleBlock(self.input_shape[0], activation=None, **kwargs)(var_x)
+        var_x = LeakyReLU(alpha=0.2)(var_x)
         var_x = ResidualBlock(self.input_shape[0], **kwargs)(var_x)
-        var_x = Conv2DOutput(3, 5, name="face_out_{}".format(side))(var_x)
+        var_x = Conv2DOutput(3, 5, name=f"face_out_{side}")(var_x)
         outputs = [var_x]
 
         if self.config.get("learn_mask", False):
             var_y = input_
-            var_y = UpscaleBlock(512)(var_y)
-            var_y = UpscaleBlock(256)(var_y)
-            var_y = UpscaleBlock(self.input_shape[0])(var_y)
-            var_y = Conv2DOutput(1, 5, name="mask_out_{}".format(side))(var_y)
+            var_y = UpscaleBlock(512, activation="leakyrelu")(var_y)
+            var_y = UpscaleBlock(256, activation="leakyrelu")(var_y)
+            var_y = UpscaleBlock(self.input_shape[0], activation="leakyrelu")(var_y)
+            var_y = Conv2DOutput(1, 5, name=f"mask_out_{side}")(var_y)
             outputs.append(var_y)
-        return KerasModel(input_, outputs=outputs, name="decoder_{}".format(side))
+        return KerasModel(input_, outputs=outputs, name=f"decoder_{side}")

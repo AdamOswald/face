@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """ The Faces Viewer Frame and Canvas for Faceswap's Manual Tool. """
 import colorsys
+import gettext
 import logging
 import platform
 import tkinter as tk
@@ -18,6 +19,10 @@ from .viewport import Viewport
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
+# LOCALES
+_LANG = gettext.translation("tools.manual", localedir="locales", fallback=True)
+_ = _LANG.gettext
+
 
 class FacesFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
     """ The faces display frame (bottom section of GUI). This frame holds the faces viewport and
@@ -25,12 +30,12 @@ class FacesFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
 
     Parameters
     ----------
-    parent: :class:`tkinter.PanedWindow`
+    parent: :class:`ttk.PanedWindow`
         The paned window that the faces frame resides in
     tk_globals: :class:`~tools.manual.manual.TkGlobals`
         The tkinter variables that apply to the whole of the GUI
     detected_faces: :class:`~tools.manual.detected_faces.DetectedFaces`
-        The :class:`~lib.faces_detect.DetectedFace` objects for this video
+        The :class:`~lib.align.DetectedFace` objects for this video
     display_frame: :class:`~tools.manual.frameviewer.frame.DisplayFrame`
         The section of the Manual Tool that holds the frames viewer
     """
@@ -155,8 +160,8 @@ class FacesActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
     def _helptext(self):
         """ dict: `button key`: `button helptext`. The help text to display for each button. """
         inverse_keybindings = {val: key for key, val in self.key_bindings.items()}
-        retval = dict(mesh="Display the landmarks mesh",
-                      mask="Display the mask")
+        retval = dict(mesh=_("Display the landmarks mesh"),
+                      mask=_("Display the mask"))
         for item in retval:
             retval[item] += " ({})".format(inverse_keybindings[item])
         return retval
@@ -228,7 +233,7 @@ class FacesViewer(tk.Canvas):   # pylint:disable=too-many-ancestors
         The :class:`tkinter.BooleanVar` objects for selectable optional annotations
         as set by the buttons in the :class:`FacesActionsFrame`
     detected_faces: :class:`~tools.manual.detected_faces.DetectedFaces`
-        The :class:`~lib.faces_detect.DetectedFace` objects for this video
+        The :class:`~lib.align.DetectedFace` objects for this video
     display_frame: :class:`~tools.manual.frameviewer.frame.DisplayFrame`
         The section of the Manual Tool that holds the frames viewer
     event: :class:`threading.Event`
@@ -238,7 +243,10 @@ class FacesViewer(tk.Canvas):   # pylint:disable=too-many-ancestors
         logger.debug("Initializing %s: (parent: %s, tk_globals: %s, tk_action_vars: %s, "
                      "detected_faces: %s, display_frame: %s, event: %s)", self.__class__.__name__,
                      parent, tk_globals, tk_action_vars, detected_faces, display_frame, event)
-        super().__init__(parent, bd=0, highlightthickness=0, bg="#bcbcbc")
+        super().__init__(parent,
+                         bd=0,
+                         highlightthickness=0,
+                         bg=get_config().user_theme["group_panel"]["panel_background"])
         self.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, anchor=tk.E)
         self._sizes = dict(tiny=32, small=64, medium=96, large=128, extralarge=192)
 
@@ -261,7 +269,8 @@ class FacesViewer(tk.Canvas):   # pylint:disable=too-many-ancestors
         """ int: The currently selected thumbnail size in pixels """
         scaling = get_config().scaling_factor
         size = self._sizes[self._globals.tk_faces_size.get().lower().replace(" ", "")]
-        return int(round(size * scaling))
+        scaled = size * scaling
+        return int(round(scaled / 2) * 2)
 
     @property
     def viewport(self):
@@ -338,7 +347,7 @@ class FacesViewer(tk.Canvas):   # pylint:disable=too-many-ancestors
             self.yview_moveto(move_to)
         if size_change:
             self._view.reset()
-        self._view.update()
+        self._view.update(refresh_annotations=retain_position)
         if not size_change:
             trigger_var.set(False)
 
@@ -467,7 +476,7 @@ class Grid():
     canvas: :class:`tkinter.Canvas`
         The :class:`~tools.manual.faceviewer.frame.FacesViewer` canvas
     detected_faces: :class:`~tools.manual.detected_faces.DetectedFaces`
-        The :class:`~lib.faces_detect.DetectedFace` objects for this video
+        The :class:`~lib.align.DetectedFace` objects for this video
     """
     def __init__(self, canvas, detected_faces):
         logger.debug("Initializing %s: (detected_faces: %s)",
@@ -521,7 +530,8 @@ class Grid():
         height = self.dimensions[1]
         visible = (max(0, floor(height * self._canvas.yview()[0]) - self._face_size),
                    ceil(height * self._canvas.yview()[1]))
-        logger.trace("visible: %s", visible)
+        logger.trace("height: %s, yview: %s, face_size: %s, visible: %s",
+                     height, self._canvas.yview(), self._face_size, visible)
         y_points = self._grid[3, :, 1]
         top = np.searchsorted(y_points, visible[0], side="left")
         bottom = np.searchsorted(y_points, visible[1], side="right")
@@ -642,7 +652,8 @@ class Grid():
         labels = np.array((self._raw_indices["frame"] + padding,
                            self._raw_indices["face"] + padding),
                           dtype="int").reshape((2, rows, columns))
-        logger.debug(labels.shape)
+        logger.debug("face-count: %s, columns: %s, rows: %s, remainder: %s, padding: %s, labels "
+                     "shape: %s", face_count, columns, rows, remainder, padding, labels.shape)
         return labels
 
     def _get_display_faces(self):
@@ -652,7 +663,7 @@ class Grid():
         -------
         :class:`numpy.ndarray`
             Array of dimensions (rows, columns) corresponding to the display grid, containing the
-            corresponding :class:`lib.faces_detect.DetectFace` object
+            corresponding :class:`lib.align.DetectFace` object
 
             Any remaining placeholders at the end of the grid which are not populated with a face
             are replaced with ``None``

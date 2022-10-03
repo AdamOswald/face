@@ -2,6 +2,7 @@
 """ Analysis tab of Display Frame of the Faceswap GUI """
 
 import csv
+import gettext
 import logging
 import os
 import tkinter as tk
@@ -10,10 +11,14 @@ from tkinter import ttk
 from .custom_widgets import Tooltip
 from .display_page import DisplayPage
 from .popup_session import SessionPopUp
-from .stats import Session
+from .analysis import Session
 from .utils import FileHandler, get_config, get_images, LongRunningTask
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+# LOCALES
+_LANG = gettext.translation("gui.tooltips", localedir="locales", fallback=True)
+_ = _LANG.gettext
 
 
 class Analysis(DisplayPage):  # pylint: disable=too-many-ancestors
@@ -162,7 +167,7 @@ class Analysis(DisplayPage):  # pylint: disable=too-many-ancestors
         logger.debug("Getting model name")
         model_name = state_file.replace("_state.json", "")
         logger.debug("model_name: %s", model_name)
-        logs_dir = os.path.join(model_dir, "{}_logs".format(model_name))
+        logs_dir = os.path.join(model_dir, f"{model_name}_logs")
         if not os.path.isdir(logs_dir):
             logger.warning("No logs folder found in folder: '%s'", logs_dir)
             return None
@@ -195,7 +200,7 @@ class Analysis(DisplayPage):  # pylint: disable=too-many-ancestors
                 return
             self._summary = result
             self._thread = None
-            self.set_info("Session: {}".format(message))
+            self.set_info(f"Session: {message}")
             self._stats.tree_insert_data(self._summary)
 
     @classmethod
@@ -204,7 +209,7 @@ class Analysis(DisplayPage):  # pylint: disable=too-many-ancestors
 
         Parameters
         ----------
-        session: :class:`lib.gui.stats.Session`
+        session: :class:`lib.gui.analysis.Session`
             The session object to generate the summary for
         """
         return session.full_summary
@@ -235,7 +240,7 @@ class Analysis(DisplayPage):  # pylint: disable=too-many-ancestors
          """
         logger.debug("Loading session")
         if full_path is None:
-            full_path = FileHandler("filename", "state").retfile
+            full_path = FileHandler("filename", "state").return_file
             if not full_path:
                 return
         self._clear_session()
@@ -248,7 +253,7 @@ class Analysis(DisplayPage):  # pylint: disable=too-many-ancestors
         Session.initialize_session(model_dir, model_name, is_training=False)
         msg = full_path
         if len(msg) > 70:
-            msg = "...{}".format(msg[-70:])
+            msg = f"...{msg[-70:]}"
         self._set_session_summary(msg)
 
     def _reset_session(self):
@@ -271,7 +276,7 @@ class Analysis(DisplayPage):  # pylint: disable=too-many-ancestors
             logger.debug("No summary data loaded. Nothing to save")
             print("No summary data loaded. Nothing to save")
             return
-        savefile = FileHandler("save", "csv").retfile
+        savefile = FileHandler("save", "csv").return_file
         if not savefile:
             logger.debug("No save file. Returning")
             return
@@ -308,16 +313,16 @@ class _Options():  # pylint:disable=too-few-public-methods
         dict
             The button names to button objects
         """
-        buttons = dict()
+        buttons = {}
         for btntype in ("clear", "save", "load"):
             logger.debug("Adding button: '%s'", btntype)
-            cmd = getattr(self._parent, "_{}_session".format(btntype))
+            cmd = getattr(self._parent, f"_{btntype}_session")
             btn = ttk.Button(self._parent.optsframe,
                              image=get_images().icons[btntype],
                              command=cmd)
             btn.pack(padx=2, side=tk.RIGHT)
             hlp = self._set_help(btntype)
-            Tooltip(btn, text=hlp, wraplength=200)
+            Tooltip(btn, text=hlp, wrap_length=200)
             buttons[btntype] = btn
         logger.debug("buttons: %s", buttons)
         return buttons
@@ -334,13 +339,13 @@ class _Options():  # pylint:disable=too-few-public-methods
         logger.debug("Setting help")
         hlp = ""
         if button_type == "reload":
-            hlp = "Load/Refresh stats for the currently training session"
+            hlp = _("Load/Refresh stats for the currently training session")
         elif button_type == "clear":
-            hlp = "Clear currently displayed session stats"
+            hlp = _("Clear currently displayed session stats")
         elif button_type == "save":
-            hlp = "Save session stats to csv"
+            hlp = _("Save session stats to csv")
         elif button_type == "load":
-            hlp = "Load saved session stats"
+            hlp = _("Load saved session stats")
         return hlp
 
     def _add_training_callback(self):
@@ -379,7 +384,6 @@ class StatsData(ttk.Frame):  # pylint: disable=too-many-ancestors
                      self.__class__.__name__, parent, selected_id, helptext)
         super().__init__(parent)
         self._selected_id = selected_id
-        self._popup_positions = list()
 
         self._canvas = tk.Canvas(self, bd=0, highlightthickness=0)
         tree_frame = ttk.Frame(self._canvas)
@@ -439,7 +443,7 @@ class StatsData(ttk.Frame):  # pylint: disable=too-many-ancestors
         self._tree.configure(yscrollcommand=self._scrollbar.set)
         self._tree.tag_configure("total", background="black", foreground="white")
         self._tree.bind("<ButtonRelease-1>", self._select_item)
-        Tooltip(self._tree, text=helptext, wraplength=200)
+        Tooltip(self._tree, text=helptext, wrap_length=200)
         return self._tree_columns()
 
     def _tree_columns(self):
@@ -557,13 +561,13 @@ class StatsData(ttk.Frame):  # pylint: disable=too-many-ancestors
             'wm',
             'iconphoto',
             toplevel._w, get_images().icons["favicon"])  # pylint:disable=protected-access
-        position = self._data_popup_get_position()
+
+        root = get_config().root
+        offset = (root.winfo_x() + 20, root.winfo_y() + 20)
         height = int(900 * scaling_factor)
         width = int(480 * scaling_factor)
-        toplevel.geometry("{}x{}+{}+{}".format(str(height),
-                                               str(width),
-                                               str(position[0]),
-                                               str(position[1])))
+        toplevel.geometry(f"{height}x{width}+{offset[0]}+{offset[1]}")
+
         toplevel.update()
 
     def _data_popup_title(self):
@@ -579,53 +583,6 @@ class StatsData(ttk.Frame):  # pylint: disable=too-many-ancestors
         model_dir, model_name = os.path.split(Session.model_filename)
         title = "All Sessions"
         if selected_id != "Total":
-            title = "{} Model: Session #{}".format(model_name.title(), selected_id)
+            title = f"{model_name.title()} Model: Session #{selected_id}"
         logger.debug("Title: '%s'", title)
-        return "{} - {}".format(title, model_dir)
-
-    def _data_popup_get_position(self):
-        """ Get the position of the next window to pop the summary graph to.
-
-        Returns
-        -------
-        list
-            The [x, y] co-ordinates that the pop up window should be placed at
-        """
-        logger.debug("getting poup position")
-        init_pos = [120, 120]
-        pos = init_pos
-        while True:
-            if pos not in self._popup_positions:
-                self._popup_positions.append(pos)
-                break
-            pos = [item + 200 for item in pos]
-            init_pos, pos = self._data_popup_check_boundaries(init_pos, pos)
-        logger.debug("Position: %s", pos)
-        return pos
-
-    def _data_popup_check_boundaries(self, initial_position, position):
-        """ Check that the popup remains within the screen boundaries.
-
-        Parameters
-        ----------
-        initial_position: list
-            The [x, y] position of the last displayed popup window
-        position: list
-            The requested [x, y] position for the new popup window
-
-        Returns
-        -------
-        tuple
-            The original initial_position and position, adjusted if the new window would go out of
-            bounds
-        """
-        logger.debug("Checking poup boundaries: (initial_position: %s, position: %s)",
-                     initial_position, position)
-        boundary_x = self.winfo_screenwidth() - 120
-        boundary_y = self.winfo_screenheight() - 120
-        if position[0] >= boundary_x or position[1] >= boundary_y:
-            initial_position = [initial_position[0] + 50, initial_position[1]]
-            position = initial_position
-        logger.debug("Returning poup boundaries: (initial_position: %s, position: %s)",
-                     initial_position, position)
-        return initial_position, position
+        return f"{title} - {model_dir}"

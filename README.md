@@ -10,16 +10,22 @@
 <p align="center">
 <a href="https://www.patreon.com/bePatron?u=23238350"><img src="https://c5.patreon.com/external/logo/become_a_patron_button.png"></img></a>
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="https://discord.gg/FC54sYg"><img src="https://i.imgur.com/gIpztkv.png"></img></a></p>
+
+<p align="center">
+  <a href="https://www.dailymotion.com/video/x810mot"><img src="https://user-images.githubusercontent.com/36920800/178301720-b69841bb-a1ca-4c20-91db-a2a10f5692ca.png"></img></a>
+<br />Emma Stone/Scarlett Johansson FaceSwap using the Phaze-A model
+</p>
+
 <p align="center">
   <a href="https://www.youtube.com/watch?v=r1jng79a5xc"><img src="https://img.youtube.com/vi/r1jng79a5xc/0.jpg"></img></a>
 <br />Jennifer Lawrence/Steve Buscemi FaceSwap using the Villain model
 </p>
 
-[![Build Status](https://travis-ci.org/deepfakes/faceswap.svg?branch=master)](https://travis-ci.org/deepfakes/faceswap) [![Documentation Status](https://readthedocs.org/projects/faceswap/badge/?version=latest)](https://faceswap.readthedocs.io/en/latest/?badge=latest)
+![Build Status](https://github.com/deepfakes/faceswap/actions/workflows/pytest.yml/badge.svg) [![Documentation Status](https://readthedocs.org/projects/faceswap/badge/?version=latest)](https://faceswap.readthedocs.io/en/latest/?badge=latest)
 
 Make sure you check out [INSTALL.md](INSTALL.md) before getting started.
 
-- [deepfakes_faceswap](#deepfakesfaceswap)
+- [deepfakes_faceswap](#deepfakes_faceswap)
 - [Manifesto](#manifesto)
   - [FaceSwap has ethical uses.](#faceswap-has-ethical-uses)
 - [How To setup and run the project](#how-to-setup-and-run-the-project)
@@ -37,7 +43,6 @@ Make sure you check out [INSTALL.md](INSTALL.md) before getting started.
   - [One time Donations](#one-time-donations)
     - [@torzdf](#torzdf)
     - [@andenixa](#andenixa)
-    - [@kvrooman](#kvrooman)
 - [How to contribute](#how-to-contribute)
   - [For people interested in the generative models](#for-people-interested-in-the-generative-models)
   - [For devs](#for-devs)
@@ -128,9 +133,11 @@ Alternatively you can give a one off donation to any of our Devs:
 ### @torzdf
  There is very little FaceSwap code that hasn't been touched by torzdf. He is responsible for implementing the GUI, FAN aligner, MTCNN detector and porting the Villain, DFL-H128 and DFaker models to FaceSwap, as well as significantly improving many areas of the code.
 
-**Bitcoin:** 385a1r9tyZpt5LyZcNk1FALTxC8ZHta7yq
+**Bitcoin:** bc1qpm22suz59ylzk0j7qk5e4c7cnkjmve2rmtrnc6
 
-**Ethereum:** 0x18CBbff5fA7C78de7B949A2b0160A0d1bd649f80
+**Ethereum:** 0xd3e954dC241B87C4E8E1A801ada485DC1d530F01
+
+**Monero:** 45dLrtQZ2pkHizBpt3P3yyJKkhcFHnhfNYPMSnz3yVEbdWm3Hj6Kr5TgmGAn3Far8LVaQf1th2n3DJVTRkfeB5ZkHxWozSX
 
 **Paypal:** [![torzdf](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=JZ8PP3YE9J62L)
 
@@ -138,11 +145,6 @@ Alternatively you can give a one off donation to any of our Devs:
 Creator of the Unbalanced and OHR models, as well as expanding various capabilities within the training process. Andenixa is currently working on new models and will take requests for donations.
 
 **Paypal:** [![andenixa](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=NRVLQYGS6NWTU)
-
-### @kvrooman
-Responsible for consolidating the converters, adding a lot of code to fix model stability issues, and helping significantly towards making the training process more modular, kvrooman continues to be a very active contributor.
-
-**Ethereum:** 0x18CBbff5fA7C78de7B949A2b0160A0d1bd649f80
 
 # How to contribute
 

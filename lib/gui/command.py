@@ -2,6 +2,7 @@
 """ The command frame for Faceswap GUI """
 
 import logging
+import gettext
 import tkinter as tk
 from tkinter import ttk
 
@@ -10,6 +11,10 @@ from .custom_widgets import Tooltip
 from .utils import get_images, get_config
 
 logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+
+# LOCALES
+_LANG = gettext.translation("gui.tooltips", localedir="locales", fallback=True)
+_ = _LANG.gettext
 
 
 class CommandNotebook(ttk.Notebook):  # pylint:disable=too-many-ancestors
@@ -78,7 +83,7 @@ class CommandNotebook(ttk.Notebook):  # pylint:disable=too-many-ancestors
                 hlp = "Run the {} script".format(cmd.title())
             logger.debug("Updated Action Button: '%s'", ttl)
             btnact.config(text=ttl, image=img)
-            Tooltip(btnact, text=hlp, wraplength=200)
+            Tooltip(btnact, text=hlp, wrap_length=200)
 
     def _set_modified_vars(self):
         """ Set the tkinter variable for each tab to indicate whether contents
@@ -130,7 +135,8 @@ class CommandTab(ttk.Frame):  # pylint:disable=too-many-ancestors
                      label_width=16,
                      option_columns=3,
                      columns=1,
-                     header_text=options.get("helptext", None))
+                     header_text=options.get("helptext", None),
+                     style="CPanel")
         self.add_frame_separator()
         ActionFrame(self)
         logger.debug("Built Tab: '%s'", self.command)
@@ -175,8 +181,8 @@ class ActionFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
                             command=lambda: tk_vars["generate"].set(var_value))
         btngen.pack(side=tk.LEFT, padx=5)
         Tooltip(btngen,
-                text="Output command line options to the console",
-                wraplength=200)
+                text=_("Output command line options to the console"),
+                wrap_length=200)
 
         btnact = ttk.Button(actframe,
                             image=get_images().icons["start"],
@@ -186,8 +192,8 @@ class ActionFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
                             command=lambda: tk_vars["action"].set(var_value))
         btnact.pack(side=tk.LEFT, fill=tk.X, expand=True)
         Tooltip(btnact,
-                text="Run the {} script".format(self.title),
-                wraplength=200)
+                text=_("Run the {} script").format(self.title),
+                wrap_length=200)
         actionbtns[self.command] = btnact
 
         logger.debug("Added action buttons: '%s'", self.title)

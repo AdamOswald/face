@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """ Tools for manipulating the alignments serialized file """
-import sys
 import logging
 
+from typing import TYPE_CHECKING
+
 from .media import AlignmentData
-from .jobs import (Check, Dfl, Draw, Extract, Merge,  # noqa pylint: disable=unused-import
-                   Rename, RemoveAlignments, Sort, Spatial, UpdateHashes)
+from .jobs import (Check, Draw, Extract, FromFaces, Rename,  # noqa pylint: disable=unused-import
+                   RemoveFaces, Sort, Spatial)
+
+if TYPE_CHECKING:
+    from argparse import Namespace
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -21,51 +25,22 @@ class Alignments():  # pylint:disable=too-few-public-methods
     arguments: :class:`argparse.Namespace`
         The :mod:`argparse` arguments as passed in from :mod:`tools.py`
     """
-    def __init__(self, arguments):
+    def __init__(self, arguments: "Namespace") -> None:
         logger.debug("Initializing %s: (arguments: '%s'", self.__class__.__name__, arguments)
         self.args = arguments
-        self.alignments = self._load_alignments()
+        job = self.args.job
+        self.alignments = None if job == "from-faces" else AlignmentData(self.args.alignments_file)
         logger.debug("Initialized %s", self.__class__.__name__)
 
-    def _load_alignments(self):
-        """ Loads the given alignments file(s) prior to running the selected job.
-
-        Returns
-        -------
-        :class:`~tools.alignments.media.AlignmentData` or list
-            The alignments data formatted for use by the alignments tool. If multiple alignments
-            files have been selected, then this will be a list of
-            :class:`~tools.alignments.media.AlignmentData` objects
-        """
-        logger.debug("Loading alignments")
-        if len(self.args.alignments_file) > 1 and self.args.job != "merge":
-            logger.error("Multiple alignments files are only permitted for merging")
-            sys.exit(0)
-        if len(self.args.alignments_file) == 1 and self.args.job == "merge":
-            logger.error("More than one alignments file required for merging")
-            sys.exit(0)
-
-        if len(self.args.alignments_file) == 1:
-            retval = AlignmentData(self.args.alignments_file[0])
-        else:
-            retval = [AlignmentData(a_file) for a_file in self.args.alignments_file]
-        logger.debug("Alignments: %s", retval)
-        return retval
-
-    def process(self):
+    def process(self) -> None:
         """ The entry point for the Alignments tool from :mod:`lib.tools.alignments.cli`.
 
         Launches the selected alignments job.
         """
-        if self.args.job == "update-hashes":
-            job = UpdateHashes
-        elif self.args.job.startswith("remove-"):
-            job = RemoveAlignments
-        elif self.args.job in ("missing-alignments", "missing-frames",
-                               "multi-faces", "leftover-faces", "no-faces"):
+        if self.args.job in ("missing-alignments", "missing-frames", "multi-faces", "no-faces"):
             job = Check
         else:
-            job = globals()[self.args.job.title()]
+            job = globals()[self.args.job.title().replace("-", "")]
         job = job(self.alignments, self.args)
         logger.debug(job)
         job.process()

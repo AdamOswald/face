@@ -2,23 +2,41 @@
 """ Neural Network Blocks for faceswap.py. """
 
 import logging
+from typing import Dict, Optional, Tuple, Union
 
-from keras.layers import (Activation, Add, Concatenate, Conv2D as KConv2D, LeakyReLU,
-                          SeparableConv2D, UpSampling2D)
-from keras.initializers import he_uniform, VarianceScaling
+from lib.utils import get_backend
 
 from .initializers import ICNR, ConvolutionAware
-from .layers import PixelShuffler, ReflectionPadding2D
+from .layers import PixelShuffler, ReflectionPadding2D, Swish, KResizeImages
 from .normalization import InstanceNormalization
+
+if get_backend() == "amd":
+    from keras.layers import (
+        Activation, Add, BatchNormalization, Concatenate, Conv2D as KConv2D, Conv2DTranspose,
+        DepthwiseConv2D as KDepthwiseConv2d, LeakyReLU, PReLU, SeparableConv2D, UpSampling2D)
+    from keras.initializers import he_uniform, VarianceScaling  # pylint:disable=no-name-in-module
+    # type checking:
+    import keras
+    from plaidml.tile import Value as Tensor  # pylint:disable=import-error
+else:
+    # Ignore linting errors from Tensorflow's thoroughly broken import system
+    from tensorflow.keras.layers import (  # noqa pylint:disable=no-name-in-module,import-error
+        Activation, Add, BatchNormalization, Concatenate, Conv2D as KConv2D, Conv2DTranspose,
+        DepthwiseConv2D as KDepthwiseConv2d, LeakyReLU, PReLU, SeparableConv2D, UpSampling2D)
+    from tensorflow.keras.initializers import he_uniform, VarianceScaling  # noqa pylint:disable=no-name-in-module,import-error
+    # type checking:
+    from tensorflow import keras
+    from tensorflow import Tensor
+
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-_CONFIG = dict()
-_NAMES = dict()
+_CONFIG: dict = {}
+_NAMES: Dict[str, int] = {}
 
 
-def set_config(configuration):
+def set_config(configuration: dict) -> None:
     """ Set the global configuration parameters from the user's config file.
 
     These options are used when creating layers for new models.
@@ -35,7 +53,7 @@ def set_config(configuration):
     logger.debug("Set NNBlock configuration to: %s", _CONFIG)
 
 
-def _get_name(name):
+def _get_name(name: str) -> str:
     """ Return unique layer name for requested block.
 
     As blocks can be used multiple times, auto appends an integer to the end of the requested
@@ -51,15 +69,46 @@ def _get_name(name):
     str
         The unique name for this layer
     """
-    global _NAMES  # pylint:disable=global-statement
+    global _NAMES  # pylint:disable=global-statement,global-variable-not-assigned
     _NAMES[name] = _NAMES.setdefault(name, -1) + 1
-    name = "{}_{}".format(name, _NAMES[name])
+    name = f"{name}_{_NAMES[name]}"
     logger.debug("Generating block name: %s", name)
     return name
 
 
 #  << CONVOLUTIONS >>
-class Conv2D(KConv2D):  # pylint:disable=too-few-public-methods
+def _get_default_initializer(
+        initializer: keras.initializers.Initializer) -> keras.initializers.Initializer:
+    """ Returns a default initializer of Convolutional Aware or he_uniform for convolutional
+    layers.
+
+    Parameters
+    ----------
+    initializer: :class:`keras.initializers.Initializer` or None
+        The initializer that has been passed into the model. If this value is ``None`` then a
+        default initializer will be set to 'he_uniform'. If Convolutional Aware initialization
+        has been enabled, then any passed through initializer will be replaced with the
+        Convolutional Aware initializer.
+
+    Returns
+    -------
+    :class:`keras.initializers.Initializer`
+        The kernel initializer to use for this convolutional layer. Either the original given
+        initializer, he_uniform or convolutional aware (if selected in config options)
+    """
+    if _CONFIG["conv_aware_init"]:
+        retval = ConvolutionAware()
+    elif initializer is None:
+        retval = he_uniform()
+    else:
+        retval = initializer
+        logger.debug("Using model supplied initializer: %s", retval)
+    logger.debug("Set default kernel_initializer: (original: %s current: %s)", initializer, retval)
+
+    return retval
+
+
+class Conv2D(KConv2D):  # pylint:disable=too-few-public-methods, too-many-ancestors
     """ A standard Keras Convolution 2D layer with parameters updated to be more appropriate for
     Faceswap architecture.
 
@@ -73,46 +122,51 @@ class Conv2D(KConv2D):  # pylint:disable=too-few-public-methods
         One of `"valid"` or `"same"` (case-insensitive). Default: `"same"`. Note that `"same"` is
         slightly inconsistent across backends with `strides` != 1, as described
         `here <https://github.com/keras-team/keras/pull/9473#issuecomment-372166860/>`_.
-    check_icnr_init: `bool`, optional
-        ``True`` if the user configuration options should be checked to apply ICNR initialization
-        to the layer. This should only be passed in from :class:`UpscaleBlock` layers.
-        Default: ``False``
+    is_upscale: `bool`, optional
+        ``True`` if the convolution is being called from an upscale layer. This causes the instance
+        to check the user configuration options to see if ICNR initialization has been selected and
+        should be applied. This should only be passed in as ``True`` from :class:`UpscaleBlock`
+        layers. Default: ``False``
     """
-    def __init__(self, *args, padding="same", check_icnr_init=False, **kwargs):
+    def __init__(self, *args, padding: str = "same", is_upscale: bool = False, **kwargs) -> None:
         if kwargs.get("name", None) is None:
             filters = kwargs["filters"] if "filters" in kwargs else args[0]
-            kwargs["name"] = _get_name("conv2d_{}".format(filters))
-        initializer = self._get_default_initializer(kwargs.pop("kernel_initializer", None))
-        if check_icnr_init and _CONFIG["icnr_init"]:
+            kwargs["name"] = _get_name(f"conv2d_{filters}")
+        initializer = _get_default_initializer(kwargs.pop("kernel_initializer", None))
+        if is_upscale and _CONFIG["icnr_init"]:
             initializer = ICNR(initializer=initializer)
             logger.debug("Using ICNR Initializer: %s", initializer)
         super().__init__(*args, padding=padding, kernel_initializer=initializer, **kwargs)
 
-    @classmethod
-    def _get_default_initializer(cls, initializer):
-        """ Returns a default initializer of Convolutional Aware or he_uniform for convolutional
-        layers.
 
-        Parameters
-        ----------
-        initializer: :class:`keras.initializers.Initializer` or None
-            The initializer that has been passed into the model. If this value is ``None`` then a
-            default initializer will be returned based on the configuration choices, otherwise
-            the given initializer will be returned.
+class DepthwiseConv2D(KDepthwiseConv2d):  # noqa,pylint:disable=too-few-public-methods, too-many-ancestors
+    """ A standard Keras Depthwise Convolution 2D layer with parameters updated to be more
+    appropriate for Faceswap architecture.
 
-        Returns
-        -------
-        :class:`keras.initializers.Initializer`
-            The kernel initializer to use for this convolutional layer. Either the original given
-            initializer, he_uniform or convolutional aware (if selected in config options)
-        """
-        if initializer is None:
-            retval = ConvolutionAware() if _CONFIG["conv_aware_init"] else he_uniform()
-            logger.debug("Set default kernel_initializer: %s", retval)
-        else:
-            retval = initializer
-            logger.debug("Using model supplied initializer: %s", retval)
-        return retval
+    Parameters are the same, with the same defaults, as a standard
+    :class:`keras.layers.DepthwiseConv2D` except where listed below. The default initializer is
+    updated to `he_uniform` or `convolutional aware` based on user configuration settings.
+
+    Parameters
+    ----------
+    padding: str, optional
+        One of `"valid"` or `"same"` (case-insensitive). Default: `"same"`. Note that `"same"` is
+        slightly inconsistent across backends with `strides` != 1, as described
+        `here <https://github.com/keras-team/keras/pull/9473#issuecomment-372166860/>`_.
+    is_upscale: `bool`, optional
+        ``True`` if the convolution is being called from an upscale layer. This causes the instance
+        to check the user configuration options to see if ICNR initialization has been selected and
+        should be applied. This should only be passed in as ``True`` from :class:`UpscaleBlock`
+        layers. Default: ``False``
+    """
+    def __init__(self, *args, padding: str = "same", is_upscale: bool = False, **kwargs) -> None:
+        if kwargs.get("name", None) is None:
+            kwargs["name"] = _get_name("dwconv2d")
+        initializer = _get_default_initializer(kwargs.pop("depthwise_initializer", None))
+        if is_upscale and _CONFIG["icnr_init"]:
+            initializer = ICNR(initializer=initializer)
+            logger.debug("Using ICNR Initializer: %s", initializer)
+        super().__init__(*args, padding=padding, depthwise_initializer=initializer, **kwargs)
 
 
 class Conv2DOutput():  # pylint:disable=too-few-public-methods
@@ -143,16 +197,20 @@ class Conv2DOutput():  # pylint:disable=too-few-public-methods
     kwargs: dict
         Any additional Keras standard layer keyword arguments to pass to the Convolutional 2D layer
     """
-    def __init__(self, filters, kernel_size, activation="sigmoid", padding="same", **kwargs):
+    def __init__(self,
+                 filters: int,
+                 kernel_size: Union[int, Tuple[int]],
+                 activation: str = "sigmoid",
+                 padding: str = "same", **kwargs) -> None:
         self._name = kwargs.pop("name") if "name" in kwargs else _get_name(
-            "conv_output_{}".format(filters))
+            f"conv_output_{filters}")
         self._filters = filters
         self._kernel_size = kernel_size
         self._activation = activation
         self._padding = padding
         self._kwargs = kwargs
 
-    def __call__(self, inputs):
+    def __call__(self, inputs: Tensor) -> Tensor:
         """ Call the Faceswap Convolutional Output Layer.
 
         Parameters
@@ -168,7 +226,7 @@ class Conv2DOutput():  # pylint:disable=too-few-public-methods
         var_x = Conv2D(self._filters,
                        self._kernel_size,
                        padding=self._padding,
-                       name="{}_conv2d".format(self._name),
+                       name=f"{self._name}_conv2d",
                        **self._kwargs)(inputs)
         var_x = Activation(self._activation, dtype="float32", name=self._name)(var_x)
         return var_x
@@ -191,7 +249,8 @@ class Conv2DBlock():  # pylint:disable=too-few-public-methods
     kernel_size: int, optional
         An integer or tuple/list of 2 integers, specifying the height and width of the 2D
         convolution window. Can be a single integer to specify the same value for all spatial
-        dimensions. Default: 5
+        dimensions. NB: If `use_depthwise` is ``True`` then a value must still be provided here,
+        but it will be ignored. Default: 5
     strides: tuple or int, optional
         An integer or tuple/list of 2 integers, specifying the strides of the convolution along the
         height and width. Can be a single integer to specify the same value for all spatial
@@ -199,40 +258,59 @@ class Conv2DBlock():  # pylint:disable=too-few-public-methods
     padding: ["valid", "same"], optional
         The padding to use. NB: If reflect padding has been selected in the user configuration
         options, then this argument will be ignored in favor of reflect padding. Default: `"same"`
-    use_instance_norm: bool, optional
-        ``True`` if instance normalization should be applied after the convolutional layer.
-        Default: ``False``
-    res_block_follows: bool, optional
-        If a residual block will follow this layer, then this should be set to ``True`` to add a
-        leaky ReLu after the convolutional layer. Default: ``False``
+    normalization: str or ``None``, optional
+        Normalization to apply after the Convolution Layer. Select one of "batch" or "instance".
+        Set to ``None`` to not apply normalization. Default: ``None``
+    activation: str or ``None``, optional
+        The activation function to use. This is applied at the end of the convolution block. Select
+        one of `"leakyrelu"`, `"prelu"` or `"swish"`. Set to ``None`` to not apply an activation
+        function. Default: `"leakyrelu"`
+    use_depthwise: bool, optional
+        Set to ``True`` to use a Depthwise Convolution 2D layer rather than a standard Convolution
+        2D layer. Default: ``False``
+    relu_alpha: float
+        The alpha to use for LeakyRelu Activation. Default=`0.1`
     kwargs: dict
         Any additional Keras standard layer keyword arguments to pass to the Convolutional 2D layer
     """
     def __init__(self,
-                 filters,
-                 kernel_size=5,
-                 strides=2,
-                 padding="same",
-                 use_instance_norm=False,
-                 res_block_follows=False,
-                 **kwargs):
-        self._name = kwargs.pop("name") if "name" in kwargs else _get_name(
-            "conv_{}".format(filters))
+                 filters: int,
+                 kernel_size: Union[int, Tuple[int, int]] = 5,
+                 strides: Union[int, Tuple[int, int]] = 2,
+                 padding: str = "same",
+                 normalization: Optional[str] = None,
+                 activation: Optional[str] = "leakyrelu",
+                 use_depthwise: bool = False,
+                 relu_alpha: float = 0.1,
+                 **kwargs) -> None:
+        self._name = kwargs.pop("name") if "name" in kwargs else _get_name(f"conv_{filters}")
+
         logger.debug("name: %s, filters: %s, kernel_size: %s, strides: %s, padding: %s, "
-                     "use_instance_norm: %s, res_block_follows: %s, kwargs: %s)",
-                     self._name, filters, kernel_size, strides, padding, use_instance_norm,
-                     res_block_follows, kwargs)
+                     "normalization: %s, activation: %s, use_depthwise: %s, kwargs: %s)",
+                     self._name, filters, kernel_size, strides, padding, normalization,
+                     activation, use_depthwise, kwargs)
+
         self._use_reflect_padding = _CONFIG["reflect_padding"]
 
-        self._filters = filters
-        self._kernel_size = kernel_size
+        self._args = (kernel_size, ) if use_depthwise else (filters, kernel_size)
         self._strides = strides
         self._padding = "valid" if self._use_reflect_padding else padding
         self._kwargs = kwargs
-        self._use_instance_norm = use_instance_norm
-        self._res_block_follows = res_block_follows
+        self._normalization = None if not normalization else normalization.lower()
+        self._activation = None if not activation else activation.lower()
+        self._use_depthwise = use_depthwise
+        self._relu_alpha = relu_alpha
 
-    def __call__(self, inputs):
+        self._assert_arguments()
+
+    def _assert_arguments(self) -> None:
+        """ Validate the given arguments. """
+        assert self._normalization in ("batch", "instance", None), (
+            "normalization should be 'batch', 'instance' or None")
+        assert self._activation in ("leakyrelu", "swish", "prelu", None), (
+            "activation should be 'leakyrelu', 'prelu', 'swish' or None")
+
+    def __call__(self, inputs: Tensor) -> Tensor:
         """ Call the Faceswap Convolutional Layer.
 
         Parameters
@@ -247,18 +325,28 @@ class Conv2DBlock():  # pylint:disable=too-few-public-methods
         """
         if self._use_reflect_padding:
             inputs = ReflectionPadding2D(stride=self._strides,
-                                         kernel_size=self._kernel_size,
-                                         name="{}_reflectionpadding2d".format(self._name))(inputs)
-        var_x = Conv2D(self._filters,
-                       self._kernel_size,
-                       strides=self._strides,
-                       padding=self._padding,
-                       name="{}_conv2d".format(self._name),
-                       **self._kwargs)(inputs)
-        if self._use_instance_norm:
-            var_x = InstanceNormalization(name="{}_instancenorm".format(self._name))(var_x)
-        if not self._res_block_follows:
-            var_x = LeakyReLU(0.1, name="{}_leakyrelu".format(self._name))(var_x)
+                                         kernel_size=self._args[-1],
+                                         name=f"{self._name}_reflectionpadding2d")(inputs)
+        conv: keras.layers.Layer = DepthwiseConv2D if self._use_depthwise else Conv2D
+        var_x = conv(*self._args,
+                     strides=self._strides,
+                     padding=self._padding,
+                     name=f"{self._name}_{'dw' if self._use_depthwise else ''}conv2d",
+                     **self._kwargs)(inputs)
+        # normalization
+        if self._normalization == "instance":
+            var_x = InstanceNormalization(name=f"{self._name}_instancenorm")(var_x)
+        if self._normalization == "batch":
+            var_x = BatchNormalization(axis=3, name=f"{self._name}_batchnorm")(var_x)
+
+        # activation
+        if self._activation == "leakyrelu":
+            var_x = LeakyReLU(self._relu_alpha, name=f"{self._name}_leakyrelu")(var_x)
+        if self._activation == "swish":
+            var_x = Swish(name=f"{self._name}_swish")(var_x)
+        if self._activation == "prelu":
+            var_x = PReLU(name=f"{self._name}_prelu")(var_x)
+
         return var_x
 
 
@@ -282,8 +370,11 @@ class SeparableConv2DBlock():  # pylint:disable=too-few-public-methods
         Any additional Keras standard layer keyword arguments to pass to the Separable
         Convolutional 2D layer
     """
-    def __init__(self, filters, kernel_size=5, strides=2, **kwargs):
-        self._name = _get_name("separableconv2d_{}".format(filters))
+    def __init__(self,
+                 filters: int,
+                 kernel_size: Union[int, Tuple[int, int]] = 5,
+                 strides: Union[int, Tuple[int, int]] = 2, **kwargs) -> None:
+        self._name = _get_name(f"separableconv2d_{filters}")
         logger.debug("name: %s, filters: %s, kernel_size: %s, strides: %s, kwargs: %s)",
                      self._name, filters, kernel_size, strides, kwargs)
 
@@ -291,37 +382,11 @@ class SeparableConv2DBlock():  # pylint:disable=too-few-public-methods
         self._kernel_size = kernel_size
         self._strides = strides
 
-        initializer = self._get_default_initializer(kwargs.pop("kernel_initializer", None))
+        initializer = _get_default_initializer(kwargs.pop("kernel_initializer", None))
         kwargs["kernel_initializer"] = initializer
         self._kwargs = kwargs
 
-    @classmethod
-    def _get_default_initializer(cls, initializer):
-        """ Returns a default initializer of Convolutional Aware or he_uniform for convolutional
-        layers.
-
-        Parameters
-        ----------
-        initializer: :class:`keras.initializers.Initializer` or None
-            The initializer that has been passed into the model. If this value is ``None`` then a
-            default initializer will be returned based on the configuration choices, otherwise
-            the given initializer will be returned.
-
-        Returns
-        -------
-        :class:`keras.initializers.Initializer`
-            The kernel initializer to use for this convolutional layer. Either the original given
-            initializer, he_uniform or convolutional aware (if selected in config options)
-        """
-        if initializer is None:
-            retval = ConvolutionAware() if _CONFIG["conv_aware_init"] else he_uniform()
-            logger.debug("Set default kernel_initializer: %s", retval)
-        else:
-            retval = initializer
-            logger.debug("Using model supplied initializer: %s", retval)
-        return retval
-
-    def __call__(self, inputs):
+    def __call__(self, inputs: Tensor) -> Tensor:
         """ Call the Faceswap Separable Convolutional 2D Block.
 
         Parameters
@@ -338,9 +403,9 @@ class SeparableConv2DBlock():  # pylint:disable=too-few-public-methods
                                 kernel_size=self._kernel_size,
                                 strides=self._strides,
                                 padding="same",
-                                name="{}_seperableconv2d".format(self._name),
+                                name=f"{self._name}_seperableconv2d",
                                 **self._kwargs)(inputs)
-        var_x = Activation("relu", name="{}_relu".format(self._name))(var_x)
+        var_x = Activation("relu", name=f"{self._name}_relu")(var_x)
         return var_x
 
 
@@ -366,39 +431,40 @@ class UpscaleBlock():  # pylint:disable=too-few-public-methods
         options, then this argument will be ignored in favor of reflect padding. Default: `"same"`
     scale_factor: int, optional
         The amount to upscale the image. Default: `2`
-    use_instance_norm: bool, optional
-        ``True`` if instance normalization should be applied after the convolutional layer.
-        Default: ``False``
-    res_block_follows: bool, optional
-        If a residual block will follow this layer, then this should be set to ``True`` to add
-        a leaky ReLu after the convolutional layer. Default: ``False``
+    normalization: str or ``None``, optional
+        Normalization to apply after the Convolution Layer. Select one of "batch" or "instance".
+        Set to ``None`` to not apply normalization. Default: ``None``
+    activation: str or ``None``, optional
+        The activation function to use. This is applied at the end of the convolution block. Select
+        one of `"leakyrelu"`, `"prelu"` or `"swish"`. Set to ``None`` to not apply an activation
+        function. Default: `"leakyrelu"`
     kwargs: dict
         Any additional Keras standard layer keyword arguments to pass to the Convolutional 2D layer
     """
 
     def __init__(self,
-                 filters,
-                 kernel_size=3,
-                 padding="same",
-                 scale_factor=2,
-                 use_instance_norm=False,
-                 res_block_follows=False,
-                 **kwargs):
-        self._name = _get_name("upscale_{}".format(filters))
+                 filters: int,
+                 kernel_size: Union[int, Tuple[int, int]] = 3,
+                 padding: str = "same",
+                 scale_factor: int = 2,
+                 normalization: Optional[str] = None,
+                 activation: Optional[str] = "leakyrelu",
+                 **kwargs) -> None:
+        self._name = _get_name(f"upscale_{filters}")
         logger.debug("name: %s. filters: %s, kernel_size: %s, padding: %s, scale_factor: %s, "
-                     "use_instance_norm: %s, res_block_follows: %s, kwargs: %s)",
-                     self._name, filters, kernel_size, padding, scale_factor, use_instance_norm,
-                     res_block_follows, kwargs)
+                     "normalization: %s, activation: %s, kwargs: %s)",
+                     self._name, filters, kernel_size, padding, scale_factor, normalization,
+                     activation, kwargs)
 
         self._filters = filters
         self._kernel_size = kernel_size
         self._padding = padding
         self._scale_factor = scale_factor
-        self._use_instance_norm = use_instance_norm
-        self._res_block_follows = res_block_follows
+        self._normalization = normalization
+        self._activation = activation
         self._kwargs = kwargs
 
-    def __call__(self, inputs):
+    def __call__(self, inputs: Tensor) -> Tensor:
         """ Call the Faceswap Convolutional Layer.
 
         Parameters
@@ -415,12 +481,12 @@ class UpscaleBlock():  # pylint:disable=too-few-public-methods
                             self._kernel_size,
                             strides=(1, 1),
                             padding=self._padding,
-                            use_instance_norm=self._use_instance_norm,
-                            res_block_follows=self._res_block_follows,
-                            name="{}_conv2d".format(self._name),
-                            check_icnr_init=_CONFIG["icnr_init"],
+                            normalization=self._normalization,
+                            activation=self._activation,
+                            name=f"{self._name}_conv2d",
+                            is_upscale=True,
                             **self._kwargs)(inputs)
-        var_x = PixelShuffler(name="{}_pixelshuffler".format(self._name),
+        var_x = PixelShuffler(name=f"{self._name}_pixelshuffler",
                               size=self._scale_factor)(var_x)
         return var_x
 
@@ -447,11 +513,12 @@ class Upscale2xBlock():  # pylint:disable=too-few-public-methods
         dimensions. Default: 3
     padding: ["valid", "same"], optional
         The padding to use. Default: `"same"`
+    activation: str or ``None``, optional
+        The activation function to use. This is applied at the end of the convolution block. Select
+        one of `"leakyrelu"`, `"prelu"` or `"swish"`. Set to ``None`` to not apply an activation
+        function. Default: `"leakyrelu"`
     interpolation: ["nearest", "bilinear"], optional
         Interpolation to use for up-sampling. Default: `"bilinear"`
-    res_block_follows: bool, optional
-        If a residual block will follow this layer, then this should be set to ``True`` to add
-        a leaky ReLu after the convolutional layer. Default: ``False``
     scale_factor: int, optional
         The amount to upscale the image. Default: `2`
     sr_ratio: float, optional
@@ -462,20 +529,27 @@ class Upscale2xBlock():  # pylint:disable=too-few-public-methods
     kwargs: dict
         Any additional Keras standard layer keyword arguments to pass to the Convolutional 2D layer
     """
-    def __init__(self, filters, kernel_size=3, padding="same", interpolation="bilinear",
-                 res_block_follows=False, sr_ratio=0.5, scale_factor=2, fast=False, **kwargs):
-        self._name = _get_name("upscale2x_{}_{}".format(filters, "fast" if fast else "hyb"))
+    def __init__(self,
+                 filters: int,
+                 kernel_size: Union[int, Tuple[int, int]] = 3,
+                 padding: str = "same",
+                 activation: Optional[str] = "leakyrelu",
+                 interpolation: str = "bilinear",
+                 sr_ratio: float = 0.5,
+                 scale_factor: int = 2,
+                 fast: bool = False, **kwargs) -> None:
+        self._name = _get_name(f"upscale2x_{filters}_{'fast' if fast else 'hyb'}")
 
         self._fast = fast
         self._filters = filters if self._fast else filters - int(filters * sr_ratio)
         self._kernel_size = kernel_size
         self._padding = padding
         self._interpolation = interpolation
-        self._res_block_follows = res_block_follows
+        self._activation = activation
         self._scale_factor = scale_factor
         self._kwargs = kwargs
 
-    def __call__(self, inputs):
+    def __call__(self, inputs: Tensor) -> Tensor:
         """ Call the Faceswap Upscale 2x Layer.
 
         Parameters
@@ -494,28 +568,177 @@ class Upscale2xBlock():  # pylint:disable=too-few-public-methods
                                     kernel_size=self._kernel_size,
                                     padding=self._padding,
                                     scale_factor=self._scale_factor,
-                                    res_block_follows=self._res_block_follows,
+                                    activation=self._activation,
                                     **self._kwargs)(var_x)
         if self._fast or (not self._fast and self._filters > 0):
             var_x2 = Conv2D(self._filters, 3,
                             padding=self._padding,
-                            name="{}_conv2d".format(self._name),
+                            is_upscale=True,
+                            name=f"{self._name}_conv2d",
                             **self._kwargs)(var_x)
             var_x2 = UpSampling2D(size=(self._scale_factor, self._scale_factor),
                                   interpolation=self._interpolation,
-                                  name="{}_upsampling2D".format(self._name))(var_x2)
+                                  name=f"{self._name}_upsampling2D")(var_x2)
             if self._fast:
                 var_x1 = UpscaleBlock(self._filters,
                                       kernel_size=self._kernel_size,
                                       padding=self._padding,
                                       scale_factor=self._scale_factor,
-                                      res_block_follows=self._res_block_follows,
+                                      activation=self._activation,
                                       **self._kwargs)(var_x)
                 var_x = Add()([var_x2, var_x1])
             else:
-                var_x = Concatenate(name="{}_concatenate".format(self._name))([var_x_sr, var_x2])
+                var_x = Concatenate(name=f"{self._name}_concatenate")([var_x_sr, var_x2])
         else:
             var_x = var_x_sr
+        return var_x
+
+
+class UpscaleResizeImagesBlock():  # pylint:disable=too-few-public-methods
+    """ Upscale block that uses the Keras Backend function resize_images to perform the up scaling
+    Similar in methodology to the :class:`Upscale2xBlock`
+
+    Adds reflection padding if it has been selected by the user, and other post-processing
+    if requested by the plugin.
+
+    Parameters
+    ----------
+    filters: int
+        The dimensionality of the output space (i.e. the number of output filters in the
+        convolution)
+    kernel_size: int, optional
+        An integer or tuple/list of 2 integers, specifying the height and width of the 2D
+        convolution window. Can be a single integer to specify the same value for all spatial
+        dimensions. Default: 3
+    padding: ["valid", "same"], optional
+        The padding to use. Default: `"same"`
+    activation: str or ``None``, optional
+        The activation function to use. This is applied at the end of the convolution block. Select
+        one of `"leakyrelu"`, `"prelu"` or `"swish"`. Set to ``None`` to not apply an activation
+        function. Default: `"leakyrelu"`
+    scale_factor: int, optional
+        The amount to upscale the image. Default: `2`
+    interpolation: ["nearest", "bilinear"], optional
+        Interpolation to use for up-sampling. Default: `"bilinear"`
+    kwargs: dict
+        Any additional Keras standard layer keyword arguments to pass to the Convolutional 2D layer
+    """
+    def __init__(self,
+                 filters: int,
+                 kernel_size: Union[int, Tuple[int, int]] = 3,
+                 padding: str = "same",
+                 activation: Optional[str] = "leakyrelu",
+                 scale_factor: int = 2,
+                 interpolation: str = "bilinear") -> None:
+        self._name = _get_name(f"upscale_ri_{filters}")
+        self._interpolation = interpolation
+        self._size = scale_factor
+        self._filters = filters
+        self._kernel_size = kernel_size
+        self._padding = padding
+        self._activation = activation
+
+    def __call__(self, inputs: Tensor) -> Tensor:
+        """ Call the Faceswap Resize Images Layer.
+
+        Parameters
+        ----------
+        inputs: Tensor
+            The input to the layer
+
+        Returns
+        -------
+        Tensor
+            The output tensor from the Upscale Layer
+        """
+        var_x = inputs
+
+        var_x_sr = KResizeImages(size=self._size,
+                                 interpolation=self._interpolation,
+                                 name=f"{self._name}_resize")(var_x)
+        var_x_sr = Conv2D(self._filters, self._kernel_size,
+                          strides=1,
+                          padding=self._padding,
+                          is_upscale=True,
+                          name=f"{self._name}_conv")(var_x_sr)
+        var_x_us = Conv2DTranspose(self._filters, 3,
+                                   strides=2,
+                                   padding=self._padding,
+                                   name=f"{self._name}_convtrans")(var_x)
+        var_x = Add()([var_x_sr, var_x_us])
+
+        if self._activation == "leakyrelu":
+            var_x = LeakyReLU(0.2, name=f"{self._name}_leakyrelu")(var_x)
+        if self._activation == "swish":
+            var_x = Swish(name=f"{self._name}_swish")(var_x)
+        if self._activation == "prelu":
+            var_x = PReLU(name=f"{self._name}_prelu")(var_x)
+        return var_x
+
+
+class UpscaleDNYBlock():  # pylint:disable=too-few-public-methods
+    """ Upscale block that implements methodology similar to the Disney Research Paper using an
+    upsampling2D block and 2 x convolutions
+
+    Adds reflection padding if it has been selected by the user, and other post-processing
+    if requested by the plugin.
+
+    References
+    ----------
+    https://studios.disneyresearch.com/2020/06/29/high-resolution-neural-face-swapping-for-visual-effects/
+
+    Parameters
+    ----------
+    filters: int
+        The dimensionality of the output space (i.e. the number of output filters in the
+        convolution)
+    kernel_size: int, optional
+        An integer or tuple/list of 2 integers, specifying the height and width of the 2D
+        convolution window. Can be a single integer to specify the same value for all spatial
+        dimensions. Default: 3
+    activation: str or ``None``, optional
+        The activation function to use. This is applied at the end of the convolution block. Select
+        one of `"leakyrelu"`, `"prelu"` or `"swish"`. Set to ``None`` to not apply an activation
+        function. Default: `"leakyrelu"`
+    size: int, optional
+        The amount to upscale the image. Default: `2`
+    interpolation: ["nearest", "bilinear"], optional
+        Interpolation to use for up-sampling. Default: `"bilinear"`
+    kwargs: dict
+        Any additional Keras standard layer keyword arguments to pass to the Convolutional 2D
+        layers
+    """
+    def __init__(self,
+                 filters: int,
+                 kernel_size: Union[int, Tuple[int, int]] = 3,
+                 padding: str = "same",
+                 activation: Optional[str] = "leakyrelu",
+                 size: int = 2,
+                 interpolation: str = "bilinear",
+                 **kwargs) -> None:
+        self._name = _get_name(f"upscale_dny_{filters}")
+        self._interpolation = interpolation
+        self._size = size
+        self._filters = filters
+        self._kernel_size = kernel_size
+        self._padding = padding
+        self._activation = activation
+        self._kwargs = kwargs
+
+    def __call__(self, inputs: Tensor) -> Tensor:
+        var_x = UpSampling2D(size=self._size,
+                             interpolation=self._interpolation,
+                             name=f"{self._name}_upsample2d")(inputs)
+        for idx in range(2):
+            var_x = Conv2DBlock(self._filters,
+                                self._kernel_size,
+                                strides=1,
+                                padding=self._padding,
+                                activation=self._activation,
+                                relu_alpha=0.2,
+                                name=f"{self._name}_conv2d_{idx + 1}",
+                                is_upscale=True,
+                                **self._kwargs)(var_x)
         return var_x
 
 
@@ -542,8 +765,12 @@ class ResidualBlock():  # pylint:disable=too-few-public-methods
     tensor
         The output tensor from the Upscale layer
     """
-    def __init__(self, filters, kernel_size=3, padding="same", **kwargs):
-        self._name = _get_name("residual_{}".format(filters))
+    def __init__(self,
+                 filters: int,
+                 kernel_size: Union[int, Tuple[int, int]] = 3,
+                 padding: str = "same",
+                 **kwargs) -> None:
+        self._name = _get_name(f"residual_{filters}")
         logger.debug("name: %s, filters: %s, kernel_size: %s, padding: %s, kwargs: %s)",
                      self._name, filters, kernel_size, padding, kwargs)
         self._use_reflect_padding = _CONFIG["reflect_padding"]
@@ -553,7 +780,7 @@ class ResidualBlock():  # pylint:disable=too-few-public-methods
         self._padding = "valid" if self._use_reflect_padding else padding
         self._kwargs = kwargs
 
-    def __call__(self, inputs):
+    def __call__(self, inputs: Tensor) -> Tensor:
         """ Call the Faceswap Residual Block.
 
         Parameters
@@ -566,21 +793,21 @@ class ResidualBlock():  # pylint:disable=too-few-public-methods
         Tensor
             The output tensor from the Upscale Layer
         """
-        var_x = LeakyReLU(alpha=0.2, name="{}_leakyrelu_0".format(self._name))(inputs)
+        var_x = inputs
         if self._use_reflect_padding:
             var_x = ReflectionPadding2D(stride=1,
                                         kernel_size=self._kernel_size,
-                                        name="{}_reflectionpadding2d_0".format(self._name))(var_x)
+                                        name=f"{self._name}_reflectionpadding2d_0")(var_x)
         var_x = Conv2D(self._filters,
                        kernel_size=self._kernel_size,
                        padding=self._padding,
-                       name="{}_conv2d_0".format(self._name),
+                       name=f"{self._name}_conv2d_0",
                        **self._kwargs)(var_x)
-        var_x = LeakyReLU(alpha=0.2, name="{}_leakyrelu_1".format(self._name))(var_x)
+        var_x = LeakyReLU(alpha=0.2, name=f"{self._name}_leakyrelu_1")(var_x)
         if self._use_reflect_padding:
             var_x = ReflectionPadding2D(stride=1,
                                         kernel_size=self._kernel_size,
-                                        name="{}_reflectionpadding2d_1".format(self._name))(var_x)
+                                        name=f"{self._name}_reflectionpadding2d_1")(var_x)
 
         kwargs = {key: val for key, val in self._kwargs.items() if key != "kernel_initializer"}
         if not _CONFIG["conv_aware_init"]:
@@ -590,9 +817,9 @@ class ResidualBlock():  # pylint:disable=too-few-public-methods
         var_x = Conv2D(self._filters,
                        kernel_size=self._kernel_size,
                        padding=self._padding,
-                       name="{}_conv2d_1".format(self._name),
+                       name=f"{self._name}_conv2d_1",
                        **kwargs)(var_x)
 
         var_x = Add()([var_x, inputs])
-        var_x = LeakyReLU(alpha=0.2, name="{}_leakyrelu_3".format(self._name))(var_x)
+        var_x = LeakyReLU(alpha=0.2, name=f"{self._name}_leakyrelu_3")(var_x)
         return var_x

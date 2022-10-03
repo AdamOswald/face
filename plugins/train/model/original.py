@@ -5,10 +5,16 @@ Based on the original https://www.reddit.com/r/deepfakes/ code sample + contribu
 This model is heavily documented as it acts as a template that other model plugins can be developed
 from.
 """
-from keras.layers import Dense, Flatten, Reshape, Input
 
 from lib.model.nn_blocks import Conv2DOutput, Conv2DBlock, UpscaleBlock
+from lib.utils import get_backend
 from ._base import KerasModel, ModelBase
+
+if get_backend() == "amd":
+    from keras.layers import Dense, Flatten, Reshape, Input
+else:
+    # Ignore linting errors from Tensorflow's thoroughly broken import system
+    from tensorflow.keras.layers import Dense, Flatten, Reshape, Input  # noqa pylint:disable=import-error,no-name-in-module
 
 
 class Model(ModelBase):
@@ -94,7 +100,7 @@ class Model(ModelBase):
 
         outputs = [self.decoder("a")(encoder_a), self.decoder("b")(encoder_b)]
 
-        autoencoder = KerasModel(inputs, outputs, name=self.name)
+        autoencoder = KerasModel(inputs, outputs, name=self.model_name)
         return autoencoder
 
     def encoder(self):
@@ -112,15 +118,15 @@ class Model(ModelBase):
         """
         input_ = Input(shape=self.input_shape)
         var_x = input_
-        var_x = Conv2DBlock(128)(var_x)
-        var_x = Conv2DBlock(256)(var_x)
-        var_x = Conv2DBlock(512)(var_x)
+        var_x = Conv2DBlock(128, activation="leakyrelu")(var_x)
+        var_x = Conv2DBlock(256, activation="leakyrelu")(var_x)
+        var_x = Conv2DBlock(512, activation="leakyrelu")(var_x)
         if not self.low_mem:
-            var_x = Conv2DBlock(1024)(var_x)
+            var_x = Conv2DBlock(1024, activation="leakyrelu")(var_x)
         var_x = Dense(self.encoder_dim)(Flatten()(var_x))
         var_x = Dense(4 * 4 * 1024)(var_x)
         var_x = Reshape((4, 4, 1024))(var_x)
-        var_x = UpscaleBlock(512)(var_x)
+        var_x = UpscaleBlock(512, activation="leakyrelu")(var_x)
         return KerasModel(input_, var_x, name="encoder")
 
     def decoder(self, side):
@@ -141,23 +147,23 @@ class Model(ModelBase):
         """
         input_ = Input(shape=(8, 8, 512))
         var_x = input_
-        var_x = UpscaleBlock(256)(var_x)
-        var_x = UpscaleBlock(128)(var_x)
-        var_x = UpscaleBlock(64)(var_x)
-        var_x = Conv2DOutput(3, 5, name="face_out_{}".format(side))(var_x)
+        var_x = UpscaleBlock(256, activation="leakyrelu")(var_x)
+        var_x = UpscaleBlock(128, activation="leakyrelu")(var_x)
+        var_x = UpscaleBlock(64, activation="leakyrelu")(var_x)
+        var_x = Conv2DOutput(3, 5, name=f"face_out_{side}")(var_x)
         outputs = [var_x]
 
         if self.learn_mask:
             var_y = input_
-            var_y = UpscaleBlock(256)(var_y)
-            var_y = UpscaleBlock(128)(var_y)
-            var_y = UpscaleBlock(64)(var_y)
-            var_y = Conv2DOutput(1, 5, name="mask_out_{}".format(side))(var_y)
+            var_y = UpscaleBlock(256, activation="leakyrelu")(var_y)
+            var_y = UpscaleBlock(128, activation="leakyrelu")(var_y)
+            var_y = UpscaleBlock(64, activation="leakyrelu")(var_y)
+            var_y = Conv2DOutput(1, 5, name=f"mask_out_{side}")(var_y)
             outputs.append(var_y)
-        return KerasModel(input_, outputs=outputs, name="decoder_{}".format(side))
+        return KerasModel(input_, outputs=outputs, name=f"decoder_{side}")
 
     def _legacy_mapping(self):
         """ The mapping of legacy separate model names to single model names """
-        return {"{}_encoder.h5".format(self.name): "encoder",
-                "{}_decoder_A.h5".format(self.name): "decoder_a",
-                "{}_decoder_B.h5".format(self.name): "decoder_b"}
+        return {f"{self.name}_encoder.h5": "encoder",
+                f"{self.name}_decoder_A.h5": "decoder_a",
+                f"{self.name}_decoder_B.h5": "decoder_b"}
