@@ -46,8 +46,7 @@ class VGGFace():
         if backend == "OPENCL":
             logger.info("Using OpenCL backend. If the process runs, you can safely ignore any of "
                         "the failure messages.")
-        retval = getattr(cv2.dnn, f"DNN_TARGET_{backend}")
-        return retval
+        return getattr(cv2.dnn, f"DNN_TARGET_{backend}")
 
     def predict(self, face):
         """ Return encodings for given image from vgg_face """
@@ -60,8 +59,7 @@ class VGGFace():
                                      False,
                                      False)
         self.model.setInput(blob)
-        preds = self.model.forward("fc7")[0, :]
-        return preds
+        return self.model.forward("fc7")[0, :]
 
     def resize_face(self, face):
         """ Resize incoming face to model_input_size """
@@ -93,11 +91,9 @@ class VGGFace():
         logger.info("Sorting face distances. Depending on your dataset this may take some time...")
         num_predictions = predictions.shape[0]
         result_linkage = linkage(predictions, method=method, preserve_input=False)
-        result_order = self.seriation(result_linkage,
-                                      num_predictions,
-                                      num_predictions + num_predictions - 2)
-
-        return result_order
+        return self.seriation(
+            result_linkage, num_predictions, num_predictions + num_predictions - 2
+        )
 
     def seriation(self, tree, points, current_index):
         """ Seriation method for sorted similarity

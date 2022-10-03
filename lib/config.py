@@ -36,7 +36,7 @@ class FaceswapConfig():
         """ Training only.
             Return a dict of config items with their set values for items
             that can be altered after the model has been created """
-        retval = dict()
+        retval = {}
         sections = [sect for sect in self.config.sections() if sect.startswith("global")]
         for sect in sections + [self.section]:
             if sect not in self.defaults:
@@ -104,7 +104,7 @@ class FaceswapConfig():
         module = os.path.splitext(filename)[0]
         section = ".".join((plugin_type, module.replace("_defaults", "")))
         logger.debug("Importing defaults module: %s.%s", module_path, module)
-        mod = import_module("{}.{}".format(module_path, module))
+        mod = import_module(f"{module_path}.{module}")
         self.add_section(title=section, info=mod._HELPTEXT)  # pylint:disable=protected-access
         for key, val in mod._DEFAULTS.items():  # pylint:disable=protected-access
             self.add_item(section=section, title=key, **val)
@@ -114,7 +114,7 @@ class FaceswapConfig():
     def config_dict(self):
         """ Collate global options and requested section into a dictionary with the correct
         data types """
-        conf = dict()
+        conf = {}
         sections = [sect for sect in self.config.sections() if sect.startswith("global")]
         sections.append(self.section)
         for sect in sections:
@@ -191,13 +191,13 @@ class FaceswapConfig():
         """ Return the config file from the calling folder or the provided file """
         if configfile is not None:
             if not os.path.isfile(configfile):
-                err = "Config file does not exist at: {}".format(configfile)
+                err = f"Config file does not exist at: {configfile}"
                 logger.error(err)
                 raise ValueError(err)
             return configfile
         dirname = os.path.dirname(sys.modules[self.__module__].__file__)
         folder, fname = os.path.split(dirname)
-        retval = os.path.join(os.path.dirname(folder), "config", "{}.ini".format(fname))
+        retval = os.path.join(os.path.dirname(folder), "config", f"{fname}.ini")
         logger.debug("Config File location: '%s'", retval)
         return retval
 
@@ -243,16 +243,18 @@ class FaceswapConfig():
                      "fixed: %s, group: %s)", section, title, datatype, default, info, rounding,
                      min_max, choices, gui_radio, fixed, group)
 
-        choices = list() if not choices else choices
+        choices = choices or []
 
         if None in (section, title, default, info):
             raise ValueError("Default config items must have a section, title, defult and "
                              "information text")
         if not self.defaults.get(section, None):
-            raise ValueError("Section does not exist: {}".format(section))
+            raise ValueError(f"Section does not exist: {section}")
         if datatype not in (str, bool, float, int, list):
-            raise ValueError("'datatype' must be one of str, bool, float or "
-                             "int: {} - {}".format(section, title))
+            raise ValueError(
+                f"'datatype' must be one of str, bool, float or int: {section} - {title}"
+            )
+
         if datatype in (float, int) and (rounding is None or min_max is None):
             raise ValueError("'rounding' and 'min_max' must be set for numerical options")
         if isinstance(datatype, list) and not choices:
@@ -281,16 +283,16 @@ class FaceswapConfig():
             helptext += ("\nIf selecting multiple options then each option should be separated "
                          "by a space or a comma (e.g. item1, item2, item3)\n")
         if choices:
-            helptext += "\nChoose from: {}".format(choices)
+            helptext += f"\nChoose from: {choices}"
         elif datatype == bool:
             helptext += "\nChoose from: True, False"
         elif datatype == int:
             cmin, cmax = min_max
-            helptext += "\nSelect an integer between {} and {}".format(cmin, cmax)
+            helptext += f"\nSelect an integer between {cmin} and {cmax}"
         elif datatype == float:
             cmin, cmax = min_max
-            helptext += "\nSelect a decimal number between {} and {}".format(cmin, cmax)
-        helptext += "\n[Default: {}]".format(default)
+            helptext += f"\nSelect a decimal number between {cmin} and {cmax}"
+        helptext += f"\n[Default: {default}]"
         return helptext
 
     def check_exists(self):
@@ -354,10 +356,7 @@ class FaceswapConfig():
                                        tabsize=4,
                                        subsequent_indent=subsequent_indent) + "\n"
         helptext = '# {}'.format(formatted[:-1].replace("\n", "\n# "))  # Strip last newline
-        if is_section:
-            helptext = helptext.upper()
-        else:
-            helptext = "\n{}".format(helptext)
+        helptext = helptext.upper() if is_section else f"\n{helptext}"
         logger.debug("formatted help: '%s'", helptext)
         return helptext
 
@@ -417,7 +416,7 @@ class FaceswapConfig():
                     opt_value = self._parse_list(section, item)
                     if not opt_value:  # No option selected
                         continue
-                    if not all(val in opt["choices"] for val in opt_value):
+                    if any(val not in opt["choices"] for val in opt_value):
                         invalid = [val for val in opt_value if val not in opt["choices"]]
                         valid = ", ".join(val for val in opt_value if val in opt["choices"])
                         logger.warning("The option(s) %s are not valid selections for '%s': '%s'. "
@@ -481,7 +480,7 @@ def generate_configs():
     for dirpath, _, filenames in os.walk(plugins_path):
         if "_config.py" in filenames:
             section = os.path.split(dirpath)[-1]
-            config_file = os.path.join(configs_path, "{}.ini".format(section))
+            config_file = os.path.join(configs_path, f"{section}.ini")
             if not os.path.exists(config_file):
-                mod = import_module("plugins.{}.{}".format(section, "_config"))
+                mod = import_module(f"plugins.{section}._config")
                 mod.Config(None)

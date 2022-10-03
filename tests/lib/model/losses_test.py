@@ -60,9 +60,10 @@ _LWIDS = [f"{loss}[{get_backend().upper()}]" for loss in _LWIDS]
 @pytest.mark.parametrize("loss_func", _LWPARAMS, ids=_LWIDS)
 def test_loss_wrapper(loss_func):
     """ Test penalized loss wrapper works as expected """
-    if get_backend() == "amd":
-        if isinstance(loss_func, losses.FocalFrequencyLoss):
-            pytest.skip("FocalFrequencyLoss Loss is not currently compatible with PlaidML")
+    if get_backend() == "amd" and isinstance(
+        loss_func, losses.FocalFrequencyLoss
+    ):
+        pytest.skip("FocalFrequencyLoss Loss is not currently compatible with PlaidML")
     y_a = K.variable(np.random.random((2, 64, 64, 4)))
     y_b = K.variable(np.random.random((2, 64, 64, 3)))
     p_loss = losses.LossWrapper()

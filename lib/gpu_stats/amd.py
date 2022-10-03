@@ -91,17 +91,21 @@ class AMDStats(_GPUStats):
     def _experimental_indices(self) -> List[int]:
         """ list: The indices corresponding to :attr:`_ids` of GPU devices marked as
         "experimental". """
-        retval = [idx for idx, device in enumerate(self._all_devices)
-                  if device not in self._supported_indices]
-        return retval
+        return [
+            idx
+            for idx, device in enumerate(self._all_devices)
+            if device not in self._supported_indices
+        ]
 
     @property
     def _supported_indices(self) -> List[int]:
         """ list: The indices corresponding to :attr:`_ids` of GPU devices marked as
         "supported". """
-        retval = [idx for idx, device in enumerate(self._all_devices)
-                  if device in self._supported_devices]
-        return retval
+        return [
+            idx
+            for idx, device in enumerate(self._all_devices)
+            if device in self._supported_devices
+        ]
 
     @property
     def _all_vram(self) -> List[int]:
@@ -211,7 +215,7 @@ class AMDStats(_GPUStats):
         self._log("debug", f"Obtained experimental Devices: {experi}")
 
         all_devices = experi + self._supported_devices
-        all_devices = all_devices if all_devices else self._get_fallback_devices()  # Use CPU
+        all_devices = all_devices or self._get_fallback_devices()
 
         self._log("debug", f"Obtained all Devices: {all_devices}")
         return all_devices
@@ -284,11 +288,15 @@ class AMDStats(_GPUStats):
             self._log("error", "Please run `plaidml-setup` to set up your GPU.")
             sys.exit(1)
 
-        max_vram = max([self._all_vram[idx] for idx in indices])
+        max_vram = max(self._all_vram[idx] for idx in indices)
         self._log("debug", f"Max VRAM: {max_vram}")
 
-        gpu_idx = min([idx for idx, vram in enumerate(self._all_vram)
-                       if vram == max_vram and idx in indices])
+        gpu_idx = min(
+            idx
+            for idx, vram in enumerate(self._all_vram)
+            if vram == max_vram and idx in indices
+        )
+
         self._log("debug", f"GPU IDX: {gpu_idx}")
 
         selected_gpu = self._plaid_ids[gpu_idx]

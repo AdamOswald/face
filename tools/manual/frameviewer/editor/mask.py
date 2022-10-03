@@ -63,7 +63,7 @@ class Mask(Editor):
         One of "draw" or "erase" """
         action = [name for name, option in self._actions.items()
                   if option["group"] == "paint" and option["tk_var"].get()]
-        return "draw" if not action else action[0]
+        return action[0] if action else "draw"
 
     @property
     def _cursor_color(self):
@@ -150,7 +150,7 @@ class Mask(Editor):
     def hide_annotation(self, tag=None):
         """ Clear the mask :attr:`_meta` dict when hiding the annotation. """
         super().hide_annotation()
-        self._meta = dict()
+        self._meta = {}
 
     def update_annotation(self):
         """ Update the mask annotation with the latest mask. """
@@ -285,7 +285,7 @@ class Mask(Editor):
             top_left = self._zoomed_roi[:2]
             # Hide all masks and only display selected
             self._canvas.itemconfig("Mask", state="hidden")
-            self._canvas.itemconfig("Mask_face_{}".format(face_index), state="normal")
+            self._canvas.itemconfig(f"Mask_face_{face_index}", state="normal")
         else:
             display_image = self._update_mask_image_full_frame(mask, rgb_color, face_index)
             top_left = self._meta["top_left"][face_index]
@@ -383,7 +383,7 @@ class Mask(Editor):
         self._object_tracker("mask_roi", "polygon", face_index, box, kwargs)
         if self._globals.is_zoomed:
             # Raise box above zoomed image
-            self._canvas.tag_raise("mask_roi_face_{}".format(face_index))
+            self._canvas.tag_raise(f"mask_roi_face_{face_index}")
 
     # << MOUSE HANDLING >>
     # Mouse cursor display
@@ -435,7 +435,7 @@ class Mask(Editor):
         """
         self._drag_start(event, control_click=True)
 
-    def _drag_start(self, event, control_click=False):  # pylint:disable=arguments-differ
+    def _drag_start(self, event, control_click=False):    # pylint:disable=arguments-differ
         """ The action to perform when the user starts clicking and dragging the mouse.
 
         Paints on the mask with the appropriate draw or erase action.
@@ -450,7 +450,7 @@ class Mask(Editor):
         """
         face_idx = self._mouse_location[1]
         if face_idx is None:
-            self._drag_data = dict()
+            self._drag_data = {}
             self._drag_callback = None
         else:
             self._drag_data["starting_location"] = np.array((event.x, event.y))
@@ -532,7 +532,7 @@ class Mask(Editor):
         if np.array_equal(self._drag_data["starting_location"], location[0]):
             self._get_cursor_shape_mark(self._meta["mask"][face_idx], location, face_idx)
         self._mask_to_alignments(face_idx)
-        self._drag_data = dict()
+        self._drag_data = {}
         self._update_cursor(event)
 
     def _get_cursor_shape_mark(self, img, location, face_idx):

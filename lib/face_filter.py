@@ -46,10 +46,11 @@ class FaceFilter():
     @staticmethod
     def load_images(reference_file_paths, nreference_file_paths):
         """ Load the images """
-        retval = dict()
-        for fpath in reference_file_paths:
-            retval[fpath] = {"image": read_image(fpath, raise_error=True),
-                             "type": "filter"}
+        retval = {
+            fpath: {"image": read_image(fpath, raise_error=True), "type": "filter"}
+            for fpath in reference_file_paths
+        }
+
         for fpath in nreference_file_paths:
             retval[fpath] = {"image": read_image(fpath, raise_error=True),
                              "type": "nfilter"}
@@ -128,7 +129,7 @@ class FaceFilter():
             ``True`` if the face matches a filter otherwise ``False``
         """
         logger.trace("Checking face with FaceFilter")
-        distances = {"filter": list(), "nfilter": list()}
+        distances = {"filter": [], "nfilter": []}
         feed = AlignedFace(detected_face.landmarks_xy, image=image, size=224, centering="legacy")
         encodings = self.vgg_face.predict(feed.face)
         for filt in self.filters.values():
@@ -139,21 +140,18 @@ class FaceFilter():
         mins = {key: min(val) if val else None for key, val in distances.items()}
         # Filter
         if distances["filter"] and avgs["filter"] > self.threshold:
-            msg = "Rejecting filter face: {} > {}".format(round(avgs["filter"], 2), self.threshold)
+            msg = f'Rejecting filter face: {round(avgs["filter"], 2)} > {self.threshold}'
             retval = False
-        # nFilter no Filter
         elif not distances["filter"] and avgs["nfilter"] < self.threshold:
-            msg = "Rejecting nFilter face: {} < {}".format(round(avgs["nfilter"], 2),
-                                                           self.threshold)
+            msg = f'Rejecting nFilter face: {round(avgs["nfilter"], 2)} < {self.threshold}'
             retval = False
-        # Filter with nFilter
         elif distances["filter"] and distances["nfilter"] and mins["filter"] > mins["nfilter"]:
-            msg = ("Rejecting face as distance from nfilter sample is smaller: (filter: {}, "
-                   "nfilter: {})".format(round(mins["filter"], 2), round(mins["nfilter"], 2)))
+            msg = f'Rejecting face as distance from nfilter sample is smaller: (filter: {round(mins["filter"], 2)}, nfilter: {round(mins["nfilter"], 2)})'
+
             retval = False
         elif distances["filter"] and distances["nfilter"] and avgs["filter"] > avgs["nfilter"]:
-            msg = ("Rejecting face as average distance from nfilter sample is smaller: (filter: "
-                   "{}, nfilter: {})".format(round(mins["filter"], 2), round(mins["nfilter"], 2)))
+            msg = f'Rejecting face as average distance from nfilter sample is smaller: (filter: {round(mins["filter"], 2)}, nfilter: {round(mins["nfilter"], 2)})'
+
             retval = False
         elif distances["filter"] and distances["nfilter"]:
             # k-nearest-neighbor classifier
@@ -164,8 +162,8 @@ class FaceFilter():
                                              key=lambda x: x[1]))[:var_k])))
             ratio = var_n/var_k
             if ratio < 0.5:
-                msg = ("Rejecting face as k-nearest neighbors classification is less than "
-                       "0.5: {}".format(round(ratio, 2)))
+                msg = f"Rejecting face as k-nearest neighbors classification is less than 0.5: {round(ratio, 2)}"
+
                 retval = False
             else:
                 msg = None

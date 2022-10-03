@@ -96,7 +96,7 @@ class RMSNormalization(Layer):
 
         self.built = True  # pylint:disable=attribute-defined-outside-init
 
-    def call(self, inputs, **kwargs):  # pylint:disable=unused-argument
+    def call(self, inputs, **kwargs):    # pylint:disable=unused-argument
         """ Call Root Mean Square Layer Normalization
 
         Parameters
@@ -124,8 +124,7 @@ class RMSNormalization(Layer):
             mean_square = K.mean(K.square(partial_x), axis=self.axis, keepdims=True)
 
         recip_square_root = tf.math.rsqrt(mean_square + self.epsilon)
-        output = self.scale * inputs * recip_square_root + self.offset
-        return output
+        return self.scale * inputs * recip_square_root + self.offset
 
     def compute_output_shape(self, input_shape):  # pylint:disable=no-self-use
         """ The output shape of the layer is the same as the input shape.

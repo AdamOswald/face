@@ -118,7 +118,7 @@ class LayerNormalization(Layer):
             if axs < 0 or axs >= ndims:
                 raise ValueError(f"Invalid axis: {axs}")
         if len(self.axis) != len(set(self.axis)):
-            raise ValueError("Duplicate axis: {}".format(tuple(self.axis)))
+            raise ValueError(f"Duplicate axis: {tuple(self.axis)}")
 
         param_shape = [input_shape[dim] for dim in self.axis]
         if self.scale:
@@ -309,7 +309,7 @@ class RMSNormalization(Layer):
 
         self.built = True  # pylint:disable=attribute-defined-outside-init
 
-    def call(self, inputs, **kwargs):  # pylint:disable=unused-argument
+    def call(self, inputs, **kwargs):    # pylint:disable=unused-argument
         """ Call Root Mean Square Layer Normalization
 
         Parameters
@@ -324,11 +324,11 @@ class RMSNormalization(Layer):
         """
         # Compute the axes along which to reduce the mean / variance
         input_shape = K.int_shape(inputs)
-        layer_size = input_shape[self.axis]
-
         if self.partial in (0.0, 1.0):
             mean_square = K.mean(K.square(inputs), axis=self.axis, keepdims=True)
         else:
+            layer_size = input_shape[self.axis]
+
             partial_size = int(layer_size * self.partial)
             partial_x = slice_tensor(inputs,
                                      axes=[self.axis],
@@ -337,8 +337,7 @@ class RMSNormalization(Layer):
             mean_square = K.mean(K.square(partial_x), axis=self.axis, keepdims=True)
 
         recip_square_root = 1. / K.sqrt(mean_square + self.epsilon)
-        output = self.scale * inputs * recip_square_root + self.offset
-        return output
+        return self.scale * inputs * recip_square_root + self.offset
 
     def compute_output_shape(self, input_shape):  # pylint:disable=no-self-use
         """ The output shape of the layer is the same as the input shape.

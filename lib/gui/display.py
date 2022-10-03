@@ -41,7 +41,7 @@ class DisplayNotebook(ttk.Notebook):  # pylint: disable=too-many-ancestors
         self._set_wrapper_var_trace()
         self._add_static_tabs()
         # pylint:disable=unnecessary-comprehension
-        self._static_tabs = [child for child in self.tabs()]
+        self._static_tabs = list(self.tabs())
         self.bind("<<NotebookTabChanged>>", self._on_tab_change)
         logger.debug("Initialized %s", self.__class__.__name__)
 
@@ -95,7 +95,7 @@ class DisplayNotebook(ttk.Notebook):  # pylint: disable=too-many-ancestors
         command: str
             The Faceswap command that is being executed
         """
-        build_tabs = getattr(self, "_{}_tabs".format(command))
+        build_tabs = getattr(self, f"_{command}_tabs")
         build_tabs()
 
     def _extract_tabs(self, command="extract"):

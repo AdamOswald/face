@@ -123,8 +123,8 @@ class IO():
                    for fname in os.listdir(self._model_dir)
                    if fname.endswith(".h5")]
         test_names = plugins + [self._plugin.name]
-        test = False if not test_names else os.path.commonprefix(test_names) == ""
-        retval = None if not test else plugins
+        test = os.path.commonprefix(test_names) == "" if test_names else False
+        retval = plugins if test else None
         logger.debug("plugin name: %s, plugins: %s, test result: %s, retval: %s",
                      self._plugin.name, plugins, test, retval)
         return retval
@@ -217,7 +217,7 @@ class IO():
     def _get_save_averages(self) -> List[float]:
         """ Return the average loss since the last save iteration and reset historical loss """
         logger.debug("Getting save averages")
-        if not all(loss for loss in self._history):
+        if not all(self._history):
             logger.debug("No loss in history")
             retval = []
         else:
@@ -254,7 +254,7 @@ class IO():
 
         if backup:  # Update lowest loss values to the state file
             # pylint:disable=unnecessary-comprehension
-            old_avgs = {key: val for key, val in self._plugin.state.lowest_avg_loss.items()}
+            old_avgs = dict(self._plugin.state.lowest_avg_loss.items())
             self._plugin.state.lowest_avg_loss["a"] = save_averages[0]
             self._plugin.state.lowest_avg_loss["b"] = save_averages[1]
             logger.debug("Updated lowest historical save iteration averages from: %s to: %s",
@@ -300,8 +300,8 @@ class Weights():
 
         freeze_layers = plugin.config.get("freeze_layers")  # Standardized config for freezing
         load_layers = plugin.config.get("load_layers")  # Standardized config for loading
-        self._freeze_layers = freeze_layers if freeze_layers else ["encoder"]  # No plugin config
-        self._load_layers = load_layers if load_layers else ["encoder"]  # No plugin config
+        self._freeze_layers = freeze_layers or ["encoder"]
+        self._load_layers = load_layers or ["encoder"]
         logger.debug("Initialized %s", self.__class__.__name__)
 
     @classmethod
@@ -325,7 +325,7 @@ class Weights():
         msg = ""
         if not os.path.exists(weights_file):
             msg = f"Load weights selected, but the path '{weights_file}' does not exist."
-        elif not os.path.splitext(weights_file)[-1].lower() == ".h5":
+        elif os.path.splitext(weights_file)[-1].lower() != ".h5":
             msg = (f"Load weights selected, but the path '{weights_file}' is not a valid Keras "
                    f"model (.h5) file.")
 
@@ -368,7 +368,7 @@ class Weights():
         if not self._weights_file:
             logger.debug("No weights file provided. Not loading weights.")
             return
-        if model_exists and self._weights_file:
+        if model_exists:
             logger.warning("Ignoring weights file '%s' as this model is resuming.",
                            self._weights_file)
             return
@@ -382,7 +382,7 @@ class Weights():
 
             if not sub_model or not sub_weights:
                 msg = f"Skipping layer {model_name} as not in "
-                msg += "current_model." if not sub_model else f"weights '{self._weights_file}.'"
+                msg += f"weights '{self._weights_file}.'" if sub_model else "current_model."
                 logger.warning(msg)
                 continue
 

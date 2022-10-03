@@ -57,7 +57,7 @@ class Landmarks(Editor):
         self._reset_selection()
         self._globals.tk_update.set(True)
 
-    def _reset_selection(self, event=None):  # pylint:disable=unused-argument
+    def _reset_selection(self, event=None):    # pylint:disable=unused-argument
         """ Reset the selection box and the selected landmark annotations. """
         self._canvas.itemconfig("lm_selected", outline=self._control_color)
         self._canvas.dtag("lm_selected")
@@ -67,7 +67,7 @@ class Landmarks(Editor):
                                 outline="gray",
                                 state="hidden")
         self._canvas.coords(self._selection_box, 0, 0, 0, 0)
-        self._drag_data = dict()
+        self._drag_data = {}
         if event is not None:
             self._drag_start(event)
 
@@ -83,7 +83,7 @@ class Landmarks(Editor):
                 landmarks = aligned.landmarks + zoomed_offset
                 # Hide all landmarks and only display selected
                 self._canvas.itemconfig("lm_dsp", state="hidden")
-                self._canvas.itemconfig("lm_dsp_face_{}".format(face_index), state="normal")
+                self._canvas.itemconfig(f"lm_dsp_face_{face_index}", state="normal")
             else:
                 landmarks = self._scale_to_display(face.landmarks_xy)
             for lm_idx, landmark in enumerate(landmarks):
@@ -109,7 +109,7 @@ class Landmarks(Editor):
         color = self._control_color
         bbox = (bounding_box[0] - radius, bounding_box[1] - radius,
                 bounding_box[0] + radius, bounding_box[1] + radius)
-        key = "lm_dsp_{}".format(landmark_index)
+        key = f"lm_dsp_{landmark_index}"
         kwargs = dict(outline=color, fill=color, width=radius)
         self._object_tracker(key, "oval", face_index, bbox, kwargs)
 
@@ -132,7 +132,7 @@ class Landmarks(Editor):
         # NB The text must be visible to be able to get the bounding box, so set to hidden
         # after the bounding box has been retrieved
 
-        keys = ["lm_lbl_{}".format(landmark_index), "lm_lbl_bg_{}".format(landmark_index)]
+        keys = [f"lm_lbl_{landmark_index}", f"lm_lbl_bg_{landmark_index}"]
         text_kwargs = dict(fill="black", font=("Default", 10), text=str(landmark_index + 1))
         bg_kwargs = dict(fill="#ffffea", outline="black")
 
@@ -162,7 +162,7 @@ class Landmarks(Editor):
         radius = 7
         bbox = (bounding_box[0] - radius, bounding_box[1] - radius,
                 bounding_box[0] + radius, bounding_box[1] + radius)
-        key = "lm_grb_{}".format(landmark_index)
+        key = f"lm_grb_{landmark_index}"
         kwargs = dict(outline="",
                       fill="",
                       width=1,
@@ -185,17 +185,26 @@ class Landmarks(Editor):
         if self._drag_data:
             self._update_cursor_select_mode(event)
         else:
-            objs = self._canvas.find_withtag("lm_grb_face_{}".format(self._globals.face_index)
-                                             if self._globals.is_zoomed else "lm_grb")
+            objs = self._canvas.find_withtag(
+                f"lm_grb_face_{self._globals.face_index}"
+                if self._globals.is_zoomed
+                else "lm_grb"
+            )
+
             item_ids = set(self._canvas.find_overlapping(event.x - 6,
                                                          event.y - 6,
                                                          event.x + 6,
                                                          event.y + 6)).intersection(objs)
             bboxes = [self._canvas.bbox(idx) for idx in item_ids]
-            item_id = next((idx for idx, bbox in zip(item_ids, bboxes)
-                            if bbox[0] <= event.x <= bbox[2] and bbox[1] <= event.y <= bbox[3]),
-                           None)
-            if item_id:
+            if item_id := next(
+                (
+                    idx
+                    for idx, bbox in zip(item_ids, bboxes)
+                    if bbox[0] <= event.x <= bbox[2]
+                    and bbox[1] <= event.y <= bbox[3]
+                ),
+                None,
+            ):
                 self._update_cursor_point_mode(item_id)
             else:
                 self._canvas.config(cursor="")
@@ -226,7 +235,7 @@ class Landmarks(Editor):
 
         self._canvas.config(cursor="none")
         for prefix in ("lm_lbl_", "lm_lbl_bg_"):
-            tag = "{}{}_face_{}".format(prefix, lm_idx, face_idx)
+            tag = f"{prefix}{lm_idx}_face_{face_idx}"
             logger.trace("Displaying: %s tag: %s", self._canvas.type(tag), tag)
             self._canvas.itemconfig(tag, state="normal")
         self._mouse_location = obj_idx
@@ -271,11 +280,11 @@ class Landmarks(Editor):
             self._drag_data["start_location"] = (event.x, event.y)
             self._drag_callback = self._move_selection
         else:  # Reset
-            self._drag_data = dict()
+            self._drag_data = {}
             self._drag_callback = None
             self._reset_selection(event)
 
-    def _drag_stop(self, event):  # pylint: disable=unused-argument
+    def _drag_stop(self, event):    # pylint: disable=unused-argument
         """ In select mode, call the select mode callback.
 
         In point mode: trigger a viewport thumbnail update on click + drag release
@@ -294,7 +303,7 @@ class Landmarks(Editor):
             self._det_faces.update.post_edit_trigger(self._globals.frame_index,
                                                      self._mouse_location[0])
             self._mouse_location = None
-            self._drag_data = dict()
+            self._drag_data = {}
         elif self._drag_data and self._drag_data.get("selected", False):
             self._drag_stop_selected()
         else:
@@ -454,12 +463,12 @@ class Mesh(Editor):
                 landmarks = aligned.landmarks + zoomed_offset
                 # Hide all meshes and only display selected
                 self._canvas.itemconfig("Mesh", state="hidden")
-                self._canvas.itemconfig("Mesh_face_{}".format(face_index), state="normal")
+                self._canvas.itemconfig(f"Mesh_face_{face_index}", state="normal")
             else:
                 landmarks = self._scale_to_display(face.landmarks_xy)
             logger.trace("Drawing Landmarks Mesh: (landmarks: %s, color: %s)", landmarks, color)
             for idx, (segment, val) in enumerate(self._landmark_mapping.items()):
-                key = "mesh_{}".format(idx)
+                key = f"mesh_{idx}"
                 pts = landmarks[val[0]:val[1]].flatten()
                 if segment in ("right_eye", "left_eye", "mouth_inner", "mouth_outer"):
                     kwargs = dict(fill="", outline=color, width=1)

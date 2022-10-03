@@ -162,8 +162,7 @@ class _GPUStats():
             The list of device indices that are available for Faceswap to use
         """
         devices = [idx for idx in range(self._device_count) if idx not in _EXCLUDE_DEVICES]
-        env_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
-        if env_devices:
+        if env_devices := os.environ.get("CUDA_VISIBLE_DEVICES"):
             new_devices = [int(i) for i in env_devices.split(",")]
             devices = [idx for idx in devices if idx in new_devices]
         self._log("debug", f"Active GPU Devices: {devices}")

@@ -98,7 +98,7 @@ class Alignments(AlignmentsBase):
         elif input_is_video:
             logger.debug("Alignments from Video File: '%s'", self._args.input_dir)
             folder, filename = os.path.split(self._args.input_dir)
-            filename = "{}_alignments".format(os.path.splitext(filename)[0])
+            filename = f"{os.path.splitext(filename)[0]}_alignments"
         else:
             logger.debug("Alignments from Input Folder: '%s'", self._args.input_dir)
             folder = str(self._args.input_dir)
@@ -119,7 +119,7 @@ class Alignments(AlignmentsBase):
             Any alignments that have already been extracted if skip existing has been selected
             otherwise an empty dictionary
         """
-        data = dict()
+        data = {}
         if not self._is_extract:
             if not self.have_alignments_file:
                 return data
@@ -133,7 +133,7 @@ class Alignments(AlignmentsBase):
             logger.debug("No skipping selected. Returning empty dictionary")
             return data
 
-        if not self.have_alignments_file and (skip_existing or skip_faces):
+        if not self.have_alignments_file:
             logger.warning("Skip Existing/Skip Faces selected, but no alignments file found!")
             return data
 
@@ -192,11 +192,11 @@ class Images():
         int
             The number of frames in the image source
         """
-        if self._is_video:
-            retval = int(count_frames(self._args.input_dir, fast=True))
-        else:
-            retval = len(self._input_images)
-        return retval
+        return (
+            int(count_frames(self._args.input_dir, fast=True))
+            if self._is_video
+            else len(self._input_images)
+        )
 
     def _check_input_folder(self):
         """ Check whether the input is a folder or video.
@@ -212,11 +212,10 @@ class Images():
         if (os.path.isfile(self._args.input_dir) and
                 os.path.splitext(self._args.input_dir)[1].lower() in _video_extensions):
             logger.info("Input Video: %s", self._args.input_dir)
-            retval = True
+            return True
         else:
             logger.info("Input Directory: %s", self._args.input_dir)
-            retval = False
-        return retval
+            return False
 
     def _get_input_images(self):
         """ Return the list of images or path to video file that is to be processed.
@@ -226,12 +225,11 @@ class Images():
         str or list
             Path to the video file if the input is a video otherwise list of image paths.
         """
-        if self._is_video:
-            input_images = self._args.input_dir
-        else:
-            input_images = get_image_paths(self._args.input_dir)
-
-        return input_images
+        return (
+            self._args.input_dir
+            if self._is_video
+            else get_image_paths(self._args.input_dir)
+        )
 
     def load(self):
         """ Generator to load frames from a folder of images or from a video file.
@@ -244,8 +242,7 @@ class Images():
             A single frame
         """
         iterator = self._load_video_frames if self._is_video else self._load_disk_frames
-        for filename, image in iterator():
-            yield filename, image
+        yield from iterator()
 
     def _load_disk_frames(self):
         """ Generator to load frames from a folder of images.
@@ -300,16 +297,14 @@ class Images():
 
         """
         logger.trace("Loading image: '%s'", filename)
-        if self._is_video:
-            if filename.isdigit():
-                frame_no = filename
-            else:
-                frame_no = os.path.splitext(filename)[0][filename.rfind("_") + 1:]
-                logger.trace("Extracted frame_no %s from filename '%s'", frame_no, filename)
-            retval = self._load_one_video_frame(int(frame_no))
+        if not self._is_video:
+            return read_image(filename, raise_error=True)
+        if filename.isdigit():
+            frame_no = filename
         else:
-            retval = read_image(filename, raise_error=True)
-        return retval
+            frame_no = os.path.splitext(filename)[0][filename.rfind("_") + 1:]
+            logger.trace("Extracted frame_no %s from filename '%s'", frame_no, filename)
+        return self._load_one_video_frame(int(frame_no))
 
     def _load_one_video_frame(self, frame_no):
         """ Obtain a single frame from a video file.
@@ -358,13 +353,13 @@ class PostProcess():  # pylint:disable=too-few-public-methods
             The list of :class:`PostProcessAction` to be performed
         """
         postprocess_items = self._get_items()
-        actions = list()
+        actions = []
         for action, options in postprocess_items.items():
-            options = dict() if options is None else options
+            options = {} if options is None else options
             args = options.get("args", tuple())
-            kwargs = options.get("kwargs", dict())
+            kwargs = options.get("kwargs", {})
             args = args if isinstance(args, tuple) else tuple()
-            kwargs = kwargs if isinstance(kwargs, dict) else dict()
+            kwargs = kwargs if isinstance(kwargs, dict) else {}
             task = globals()[action](*args, **kwargs)
             if task.valid:
                 logger.debug("Adding Postprocess action: '%s'", task)
@@ -388,7 +383,7 @@ class PostProcess():  # pylint:disable=too-few-public-methods
             The name of the action to be performed as the key. Any action specific
             arguments and keyword arguments as the value.
         """
-        postprocess_items = dict()
+        postprocess_items = {}
         # Debug Landmarks
         if (hasattr(self._args, 'debug_landmarks') and self._args.debug_landmarks):
             postprocess_items["DebugLandmarks"] = None
@@ -410,12 +405,12 @@ class PostProcess():  # pylint:disable=too-few-public-methods
             face_filter = dict(detector=detector,
                                aligner=aligner,
                                multiprocess=not self._args.singleprocess)
-            filter_lists = dict()
+            filter_lists = {}
             if hasattr(self._args, "ref_threshold"):
                 face_filter["ref_threshold"] = self._args.ref_threshold
             for filter_type in ('filter', 'nfilter'):
                 filter_args = getattr(self._args, filter_type, None)
-                filter_args = None if not filter_args else filter_args
+                filter_args = filter_args or None
                 filter_lists[filter_type] = filter_args
             face_filter["filter_lists"] = filter_lists
             postprocess_items["FaceFilter"] = {"kwargs": face_filter}
@@ -563,14 +558,14 @@ class FaceFilter(PostProcessAction):
         :class:`~lib.face_filter.FaceFilter`
             The face filter
         """
-        if not any(val for val in filter_lists.values()):
+        if not any(filter_lists.values()):
             return None
 
         facefilter = None
         filter_files = [self._set_face_filter(f_type, filter_lists[f_type])
                         for f_type in ("filter", "nfilter")]
 
-        if any(filters for filters in filter_files):
+        if any(filter_files):
             facefilter = FilterFunc(filter_files[0],
                                     filter_files[1],
                                     detector,
@@ -599,7 +594,7 @@ class FaceFilter(PostProcessAction):
             The confirmed existing paths to filter files to use
         """
         if not f_args:
-            return list()
+            return []
 
         logger.info("%s: %s", f_type.title(), f_args)
         filter_files = f_args if isinstance(f_args, list) else [f_args]
@@ -627,7 +622,7 @@ class FaceFilter(PostProcessAction):
         """
         if not self._filter:
             return
-        ret_faces = list()
+        ret_faces = []
         for idx, detect_face in enumerate(extract_media.detected_faces):
             check_item = detect_face["face"] if isinstance(detect_face, dict) else detect_face
             if not self._filter.check(extract_media.image, check_item):

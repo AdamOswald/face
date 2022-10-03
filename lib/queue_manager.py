@@ -21,7 +21,7 @@ class QueueManager():
         logger.debug("Initializing %s", self.__class__.__name__)
 
         self.shutdown = threading.Event()
-        self.queues = dict()
+        self.queues = {}
         logger.debug("Initialized %s", self.__class__.__name__)
 
     def add_queue(self, name, maxsize=0, create_new=False):
@@ -50,7 +50,7 @@ class QueueManager():
         logger.debug("QueueManager adding: (name: '%s', maxsize: %s, create_new: %s)",
                      name, maxsize, create_new)
         if not create_new and name in self.queues:
-            raise ValueError("Queue '{}' already exists.".format(name))
+            raise ValueError(f"Queue '{name}' already exists.")
         if create_new and name in self.queues:
             i = 0
             while name in self.queues:

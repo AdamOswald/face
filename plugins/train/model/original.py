@@ -100,8 +100,7 @@ class Model(ModelBase):
 
         outputs = [self.decoder("a")(encoder_a), self.decoder("b")(encoder_b)]
 
-        autoencoder = KerasModel(inputs, outputs, name=self.model_name)
-        return autoencoder
+        return KerasModel(inputs, outputs, name=self.model_name)
 
     def encoder(self):
         """ The original Faceswap Encoder Network.
