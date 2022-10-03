@@ -142,7 +142,7 @@ class ColoredFormatter(logging.Formatter):
             The length of the formatted date-time string
         """
         sample_time = time.time()
-        date_format = self.datefmt if self.datefmt else self.default_time_format
+        date_format = self.datefmt or self.default_time_format
         datestring = time.strftime(date_format, logging.Formatter.converter(sample_time))
         if not self.datefmt and self.default_msec_format:
             msecs = (sample_time - int(sample_time)) * 1000
@@ -205,11 +205,8 @@ class FaceswapFormatter(logging.Formatter):
         if self.usesTime():
             record.asctime = self.formatTime(record, self.datefmt)
         msg = self.formatMessage(record)
-        if record.exc_info:
-            # Cache the traceback text to avoid converting it multiple times
-            # (it's constant anyway)
-            if not record.exc_text:
-                record.exc_text = self.formatException(record.exc_info)
+        if record.exc_info and not record.exc_text:
+            record.exc_text = self.formatException(record.exc_info)
         if record.exc_text:
             if msg[-1:] != "\n":
                 msg = msg + "\n"

@@ -396,5 +396,4 @@ class LPIPSLoss():  # pylint:disable=too-few-public-methods
         axis = 0 if self._spatial else None
         val = K.sum(res, axis=axis)
 
-        retval = (val, res) if self._ret_per_layer else val
-        return retval
+        return (val, res) if self._ret_per_layer else val

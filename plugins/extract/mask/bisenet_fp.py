@@ -36,9 +36,9 @@ class Mask(Masker):
         self.name = "BiSeNet - Face Parsing"
         self.input_size = 512
         self.color_format = "RGB"
-        self.vram = 2304 if not self.config["cpu"] else 0
-        self.vram_warnings = 256 if not self.config["cpu"] else 0
-        self.vram_per_batch = 64 if not self.config["cpu"] else 0
+        self.vram = 0 if self.config["cpu"] else 2304
+        self.vram_warnings = 0 if self.config["cpu"] else 256
+        self.vram_per_batch = 0 if self.config["cpu"] else 64
         self.batchsize = self.config["batch-size"]
 
         self._segment_indices = self._get_segment_indices()
@@ -67,7 +67,7 @@ class Mask(Masker):
         """
         config = _get_config(".".join(self.__module__.split(".")[-2:]), configfile=configfile)
         is_faceswap = config.get("weights", "faceswap").lower() == "faceswap"
-        version = 1 if not is_faceswap else 2 if config.get("include_hair") else 3
+        version = (2 if config.get("include_hair") else 3) if is_faceswap else 1
         return is_faceswap, version
 
     def _get_segment_indices(self):
@@ -392,8 +392,7 @@ class AttentionRefinementModule():  # pylint:disable=too-few-public-methods
         atten = Conv2D(self._filters, 1, use_bias=False, name=f"{prefix}.conv_atten")(atten)
         atten = BatchNormalization(epsilon=1e-5, name=f"{prefix}.bn_atten")(atten)
         atten = Activation("sigmoid", name=f"{prefix}.sigmoid")(atten)
-        var_x = Multiply(name=f"{prefix}.mul")([feat, atten])
-        return var_x
+        return Multiply(name=f"{prefix}.mul")([feat, atten])
 
 
 class ContextPath():  # pylint:disable=too-few-public-methods

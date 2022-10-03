@@ -40,23 +40,36 @@ class EffmpegArgs(FaceSwapArgs):
         return opts[index]
 
     def get_argument_list(self):
-        argument_list = list()
-        argument_list.append(dict(
-            opts=('-a', '--action'),
-            action=Radio,
-            dest="action",
-            choices=("extract", "gen-vid", "get-fps", "get-info", "mux-audio", "rescale", "rotate",
-                     "slice"),
-            default="extract",
-            help=_("R|Choose which action you want ffmpeg ffmpeg to do."
-                   "\nL|'extract': turns videos into images "
-                   "\nL|'gen-vid': turns images into videos "
-                   "\nL|'get-fps' returns the chosen video's fps."
-                   "\nL|'get-info' returns information about a video."
-                   "\nL|'mux-audio' add audio from one video to another."
-                   "\nL|'rescale' resize video."
-                   "\nL|'rotate' rotate video."
-                   "\nL|'slice' cuts a portion of the video into a separate video file.")))
+        argument_list = [
+            dict(
+                opts=('-a', '--action'),
+                action=Radio,
+                dest="action",
+                choices=(
+                    "extract",
+                    "gen-vid",
+                    "get-fps",
+                    "get-info",
+                    "mux-audio",
+                    "rescale",
+                    "rotate",
+                    "slice",
+                ),
+                default="extract",
+                help=_(
+                    "R|Choose which action you want ffmpeg ffmpeg to do."
+                    "\nL|'extract': turns videos into images "
+                    "\nL|'gen-vid': turns images into videos "
+                    "\nL|'get-fps' returns the chosen video's fps."
+                    "\nL|'get-info' returns information about a video."
+                    "\nL|'mux-audio' add audio from one video to another."
+                    "\nL|'rescale' resize video."
+                    "\nL|'rotate' rotate video."
+                    "\nL|'slice' cuts a portion of the video into a separate video file."
+                ),
+            )
+        ]
+
         argument_list.append(dict(
             opts=('-i', '--input'),
             action=ContextFullPaths,

@@ -71,7 +71,7 @@ class KSession():
                                           [] if exclude_gpus is None else exclude_gpus,
                                           cpu_mode)
         self._model_path = model_path
-        self._model_kwargs = {} if not model_kwargs else model_kwargs
+        self._model_kwargs = model_kwargs or {}
         self._model: Optional[Model] = None
         logger.trace("Initialized: %s", self.__class__.__name__,)  # type:ignore
 
@@ -128,8 +128,7 @@ class KSession():
         while done_items < items:
             if batch_size < 4:  # Not much difference in BS < 4
                 batch_size = 1
-            batch_items = ((items - done_items) // batch_size) * batch_size
-            if batch_items:
+            if batch_items := ((items - done_items) // batch_size) * batch_size:
                 pred_data = [x[done_items:done_items + batch_items] for x in feed]
                 pred = self._model.predict(pred_data, batch_size=batch_size)
                 done_items += batch_items

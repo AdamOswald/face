@@ -110,7 +110,7 @@ class DisplayPage(ttk.Frame):  # pylint: disable=too-many-ancestors
     def subnotebook_add_page(self, tabtitle, widget=None):
         """ Add a page to the sub notebook """
         logger.debug("Adding subnotebook page: %s", tabtitle)
-        frame = widget if widget else ttk.Frame(self.subnotebook)
+        frame = widget or ttk.Frame(self.subnotebook)
         frame.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
         self.subnotebook.add(frame, text=tabtitle)
         self.subnotebook_configure()
@@ -146,14 +146,15 @@ class DisplayPage(ttk.Frame):  # pylint: disable=too-many-ancestors
             subnotebook frame """
         logger.debug("Getting subnotebook widgets")
         for child in self.subnotebook.winfo_children():
-            for widget in child.winfo_children():
-                yield widget
+            yield from child.winfo_children()
 
     def subnotebook_get_titles_ids(self):
         """ Return tabs ids and titles """
-        tabs = {}
-        for tab_id in range(0, self.subnotebook.index("end")):
-            tabs[self.subnotebook.tab(tab_id, "text")] = tab_id
+        tabs = {
+            self.subnotebook.tab(tab_id, "text"): tab_id
+            for tab_id in range(self.subnotebook.index("end"))
+        }
+
         logger.debug(tabs)
         return tabs
 

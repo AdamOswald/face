@@ -128,8 +128,8 @@ class Manual(tk.Tk):
         extractor_init = False
         frames_init = False
         while True:
-            extractor_init = extractor_init if extractor_init else extractor.is_initialized
-            frames_init = frames_init if frames_init else loader.is_initialized
+            extractor_init = extractor_init or extractor.is_initialized
+            frames_init = frames_init or loader.is_initialized
             if extractor_init and frames_init:
                 logger.debug("Threads inialized")
                 break
@@ -315,7 +315,7 @@ class _Options(ttk.Frame):  # pylint:disable=too-many-ancestors
         self._initialize_face_options()
         frame = ttk.Frame(self)
         frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-        panels = dict()
+        panels = {}
         for name, editor in self._display_frame.editors.items():
             logger.debug("Initializing control panel for '%s' editor", name)
             controls = editor.controls
@@ -421,7 +421,7 @@ class TkGlobals():
         dict
             The variable name as key, the variable as value
         """
-        retval = dict()
+        retval = {}
         for name in ("frame_index", "transport_index", "face_index", "filter_distance"):
             var = tk.IntVar()
             var.set(10 if name == "filter_distance" else 0)
@@ -685,9 +685,12 @@ class Aligner():
         """ Launch the aligner in a background thread so we can run other tasks whilst
         waiting for initialization """
         logger.debug("Launching aligner initialization thread")
-        thread = MultiThread(self._init_aligner,
-                             thread_count=1,
-                             name="{}.init_aligner".format(self.__class__.__name__))
+        thread = MultiThread(
+            self._init_aligner,
+            thread_count=1,
+            name=f"{self.__class__.__name__}.init_aligner",
+        )
+
         thread.start()
         logger.debug("Launched aligner initialization thread")
         return thread
@@ -848,11 +851,14 @@ class FrameLoader():
     def _background_init_frames(self, frames_location, video_meta_data):
         """ Launch the images loader in a background thread so we can run other tasks whilst
         waiting for initialization. """
-        thread = MultiThread(self._load_images,
-                             frames_location,
-                             video_meta_data,
-                             thread_count=1,
-                             name="{}.init_frames".format(self.__class__.__name__))
+        thread = MultiThread(
+            self._load_images,
+            frames_location,
+            video_meta_data,
+            thread_count=1,
+            name=f"{self.__class__.__name__}.init_frames",
+        )
+
         thread.start()
         return thread
 

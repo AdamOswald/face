@@ -26,15 +26,20 @@ class ManualArgs(FaceSwapArgs):
     @staticmethod
     def get_argument_list():
         """ Generate the command line argument list for the Manual Tool. """
-        argument_list = list()
-        argument_list.append(dict(
-            opts=("-al", "--alignments"),
-            action=FileFullPaths,
-            filetypes="alignments",
-            type=str,
-            group=_("data"),
-            dest="alignments_path",
-            help=_("Path to the alignments file for the input, if not at the default location")))
+        argument_list = [
+            dict(
+                opts=("-al", "--alignments"),
+                action=FileFullPaths,
+                filetypes="alignments",
+                type=str,
+                group=_("data"),
+                dest="alignments_path",
+                help=_(
+                    "Path to the alignments file for the input, if not at the default location"
+                ),
+            )
+        ]
+
         argument_list.append(dict(
             opts=("-fr", "--frames"),
             action=DirOrFileFullPaths,

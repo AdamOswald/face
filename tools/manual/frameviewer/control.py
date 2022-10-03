@@ -54,7 +54,7 @@ class Navigation():
         if reset_progress:
             self._globals.tk_transport_index.set(0)
 
-    def _update_total_frame_count(self, *args):  # pylint:disable=unused-argument
+    def _update_total_frame_count(self, *args):    # pylint:disable=unused-argument
         """ Update the displayed number of total frames that meet the current filter criteria.
 
         Parameters
@@ -70,7 +70,7 @@ class Navigation():
         logger.debug("Filtered frame count has changed. Updating from %s to %s",
                      self._current_nav_frame_count, frame_count)
         self._nav["scale"].config(to=max_frame)
-        self._nav["label"].config(text="/{}".format(max_frame))
+        self._nav["label"].config(text=f"/{max_frame}")
         state = "disabled" if max_frame == 0 else "normal"
         self._nav["entry"].config(state=state)
 
@@ -135,7 +135,7 @@ class Navigation():
                 raise
             val = str(err).split(" ")[-1].replace("\"", "")
             retval = "".join(ch for ch in val if ch.isdigit())
-            retval = 0 if not retval else int(retval)
+            retval = int(retval) if retval else 0
             self._globals.tk_transport_index.set(retval)
         return retval
 
@@ -190,7 +190,7 @@ class BackgroundImage():  # pylint:disable=too-few-public-methods
         """
         self._switch_image(view_mode)
         logger.trace("Updating background frame")
-        getattr(self, "_update_tk_{}".format(self._current_view_mode))()
+        getattr(self, f"_update_tk_{self._current_view_mode}")()
 
     def _switch_image(self, view_mode):
         """ Switch the image between the full frame image and the zoomed face image.
@@ -206,7 +206,7 @@ class BackgroundImage():  # pylint:disable=too-few-public-methods
         self._zoomed_centering = self._canvas.active_editor.zoomed_centering
         logger.trace("Switching background image from '%s' to '%s'",
                      self._current_view_mode, view_mode)
-        img = getattr(self, "_tk_{}".format(view_mode))
+        img = getattr(self, f"_tk_{view_mode}")
         self._canvas.itemconfig(self._image, image=img)
         self._globals.tk_is_zoomed.set(view_mode == "face")
         self._globals.tk_face_index.set(0)

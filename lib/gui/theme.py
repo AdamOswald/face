@@ -196,16 +196,18 @@ class _Widgets():
             The color of the input field's border
         """
         # All the stock down arrow images are bad
-        images = dict()
-        for state in ("active", "normal"):
-            images[f"arrow_{state}"] = self._images.get_image(
+        images = {
+            f"arrow_{state}": self._images.get_image(
                 (20, 20),
                 control_color if state == "normal" else active_color,
                 foreground=arrow_color,
                 pattern="arrow",
                 thickness=2,
                 border_width=1,
-                border_color=control_border)
+                border_color=control_border,
+            )
+            for state in ("active", "normal")
+        }
 
         self._style.element_create(f"{key}.Combobox.downarrow",
                                    "image",
@@ -343,7 +345,7 @@ class _Widgets():
                      "control_backgrounds: %s, control_foregrounds: %s, control_borders: %s)",
                      key, trough_color, border_color, control_backgrounds, control_foregrounds,
                      control_borders)
-        images = dict()
+        images = {}
         for idx, state in enumerate(("normal", "disabled", "active")):
             # Create arrow and slider widgets for each state
             img_args = ((16, 16), control_backgrounds[idx])
@@ -370,7 +372,7 @@ class _Widgets():
                     ("disabled", images[f"img_{lookup}_disabled"]),
                     ("pressed !disabled", images[f"img_{lookup}_active"]),
                     ("active !disabled", images[f"img_{lookup}_active"]))
-            kwargs = dict(border=1, sticky="ns") if element == "thumb" else dict()
+            kwargs = dict(border=1, sticky="ns") if element == "thumb" else {}
             self._style.element_create(*args, **kwargs)
 
         # Get a configurable trough
@@ -535,8 +537,8 @@ class _TkImage():  # pylint:disable=too-few-public-methods
         direction: ["left", "up", "right", "down"], optional
             The direction that the pattern should be facing. Default: `"down"`
         """
-        foreground = foreground if foreground else background
-        border_color = border_color if border_color else foreground
+        foreground = foreground or background
+        border_color = border_color or foreground
 
         args = [dimensions]
         if pattern.lower() == "arrow":

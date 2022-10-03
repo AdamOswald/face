@@ -24,14 +24,19 @@ class ModelArgs(FaceSwapArgs):
     @staticmethod
     def get_argument_list() -> List[Dict[str, Any]]:
         """ Put the arguments in a list so that they are accessible from both argparse and gui """
-        argument_list = []
-        argument_list.append(dict(
-            opts=("-m", "--model-dir"),
-            action=DirFullPaths,
-            dest="model_dir",
-            required=True,
-            help=_("Model directory. A directory containing the model you wish to perform an "
-                   "action on.")))
+        argument_list = [
+            dict(
+                opts=("-m", "--model-dir"),
+                action=DirFullPaths,
+                dest="model_dir",
+                required=True,
+                help=_(
+                    "Model directory. A directory containing the model you wish to perform an "
+                    "action on."
+                ),
+            )
+        ]
+
         argument_list.append(dict(
             opts=("-j", "--job"),
             action=Radio,

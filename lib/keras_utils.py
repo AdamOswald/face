@@ -65,8 +65,7 @@ def replicate_pad(image: Tensor, padding: int) -> Tensor:
     pad_top_bottom = K.concatenate([top_pad, image, bottom_pad], axis=1)
     left_pad = K.tile(pad_top_bottom[..., :1, :], (1, 1, padding, 1))
     right_pad = K.tile(pad_top_bottom[..., -1:, :],  (1, 1, padding, 1))
-    padded = K.concatenate([left_pad, pad_top_bottom, right_pad], axis=2)
-    return padded
+    return K.concatenate([left_pad, pad_top_bottom, right_pad], axis=2)
 
 
 class ColorSpaceConvert():  # pylint:disable=too-few-public-methods

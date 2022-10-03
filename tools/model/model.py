@@ -203,18 +203,14 @@ class NaNScan():  # pylint:disable=too-few-public-methods
         if hasattr(layer, "layers"):  # Must be a submodel
             retval = {}
             for lyr in layer.layers:
-                info = self._parse_weights(lyr)
-                if not info:
-                    continue
-                retval[lyr.name] = info
+                if info := self._parse_weights(lyr):
+                    retval[lyr.name] = info
             return retval
 
         nans = sum(np.count_nonzero(np.isnan(w)) for w in weights)
         infs = sum(np.count_nonzero(np.isinf(w)) for w in weights)
 
-        if nans + infs == 0:
-            return {}
-        return dict(nans=nans, infs=infs)
+        return {} if nans + infs == 0 else dict(nans=nans, infs=infs)
 
     def _parse_output(self, errors: dict, indent: int = 0) -> None:
         """ Parse the output of the errors dictionary and print a pretty summary.
@@ -233,7 +229,7 @@ class NaNScan():  # pylint:disable=too-few-public-methods
             if isinstance(val, dict) and "nans" not in val:
                 logger.info(logline)
                 self._parse_output(val, indent + 1)
-            elif isinstance(val, dict) and "nans" in val:
+            elif isinstance(val, dict):
                 logline += f"nans: {val['nans']}, infs: {val['infs']}"
                 logger.info(logline.ljust(30))
 

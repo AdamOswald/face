@@ -49,8 +49,7 @@ class ScriptExecutor():  # pylint:disable=too-few-public-methods
         src = f"tools.{self._command.lower()}" if cmd == "tools.py" else "scripts"
         mod = ".".join((src, self._command.lower()))
         module = import_module(mod)
-        script = getattr(module, self._command.title())
-        return script
+        return getattr(module, self._command.title())
 
     def _set_environment_variables(self) -> None:
         """ Set the number of threads that numexpr can use and TF environment variables. """
@@ -117,13 +116,12 @@ class ScriptExecutor():  # pylint:disable=too-few-public-methods
         message: str
             The error message to display
         """
-        if "gui" in sys.argv and platform.system() == "Windows":
-            logger.error(message)
-            logger.info("Press \"ENTER\" to dismiss the message and close FaceSwap")
-            input()
-            sys.exit(1)
-        else:
+        if "gui" not in sys.argv or platform.system() != "Windows":
             raise FaceswapError(message)
+        logger.error(message)
+        logger.info("Press \"ENTER\" to dismiss the message and close FaceSwap")
+        input()
+        sys.exit(1)
 
     def _test_for_gui(self) -> None:
         """ If running the gui, performs check to ensure necessary prerequisites are present. """

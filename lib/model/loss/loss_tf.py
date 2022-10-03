@@ -84,15 +84,14 @@ class FocalFrequencyLoss():  # pylint:disable=too-few-public-methods
         patch_rows = cols // self._patch_factor
         patch_cols = rows // self._patch_factor
         for i in range(self._patch_factor):
+            row_from = i * patch_rows
+            row_to = (i + 1) * patch_rows
             for j in range(self._patch_factor):
-                row_from = i * patch_rows
-                row_to = (i + 1) * patch_rows
                 col_from = j * patch_cols
                 col_to = (j + 1) * patch_cols
                 patch_list.append(inputs[:, row_from: row_to, col_from: col_to, :])
 
-        retval = K.stack(patch_list, axis=1)
-        return retval
+        return K.stack(patch_list, axis=1)
 
     def _tensor_to_frequency_spectrum(self, patch: tf.Tensor) -> tf.Tensor:
         """ Perform FFT to create the orthonomalized DFT frequencies.
@@ -177,9 +176,7 @@ class FocalFrequencyLoss():  # pylint:disable=too-few-public-methods
         tmp = K.square(freq_pred - freq_true)  # freq distance using squared Euclidean distance
 
         freq_distance = tmp[..., 0] + tmp[..., 1]
-        loss = weight_matrix * freq_distance  # dynamic spectrum weighting (Hadamard product)
-
-        return loss
+        return weight_matrix * freq_distance
 
     def __call__(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
         """ Call the Focal Frequency Loss Function.
@@ -309,7 +306,7 @@ class GradientLoss():  # pylint:disable=too-few-public-methods
                                     self._diff_yy(y_pred)) +
                                     self.generalized_loss(self._diff_xy(y_true),
                                     self._diff_xy(y_pred)) * 2.)
-        loss = loss / (self._tv_weight + self._tv2_weight)
+        loss /= self._tv_weight + self._tv2_weight
         # TODO simplify to use MSE instead
         return loss
 
@@ -470,8 +467,7 @@ class LaplacianPyramidLoss():  # pylint:disable=too-few-public-methods
                                    ([0, 0], [1, 1], [1, 1], [0, 0]),
                                    mode="SYMMETRIC")
 
-        retval = K.conv2d(padded_inputs, gauss, strides=1, padding="valid")
-        return retval
+        return K.conv2d(padded_inputs, gauss, strides=1, padding="valid")
 
     def _get_laplacian_pyramid(self, inputs: tf.Tensor) -> List[tf.Tensor]:
         """ Obtain the Laplacian Pyramid.
@@ -516,14 +512,12 @@ class LaplacianPyramidLoss():  # pylint:disable=too-few-public-methods
 
         losses = K.stack([K.sum(K.abs(ppred - ptrue)) / K.cast(K.prod(K.shape(ptrue)), "float32")
                           for ptrue, ppred in zip(pyramid_true, pyramid_pred)])
-        loss = K.sum(losses * self._weights)
-
-        return loss
+        return K.sum(losses * self._weights)
 
 
 class LInfNorm():  # pylint:disable=too-few-public-methods
     """ Calculate the L-inf norm as a loss function. """
-    def __call__(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:  # noqa,pylint:disable=no-self-use
+    def __call__(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:    # noqa,pylint:disable=no-self-use
         """ Call the L-inf norm loss function.
 
         Parameters
@@ -540,8 +534,7 @@ class LInfNorm():  # pylint:disable=too-few-public-methods
         """
         diff = K.abs(y_true - y_pred)
         max_loss = K.max(diff, axis=(1, 2), keepdims=True)
-        loss = K.mean(max_loss, axis=-1)
-        return loss
+        return K.mean(max_loss, axis=-1)
 
 
 class LossWrapper(tf.keras.losses.Loss):

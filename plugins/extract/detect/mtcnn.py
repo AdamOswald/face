@@ -26,9 +26,9 @@ class Detect(Detector):
         super().__init__(git_model_id=git_model_id, model_filename=model_filename, **kwargs)
         self.name = "MTCNN"
         self.input_size = 640
-        self.vram = 320 if not self.config["cpu"] else 0
-        self.vram_warnings = 64 if not self.config["cpu"] else 0  # Will run at this with warnings
-        self.vram_per_batch = 32 if not self.config["cpu"] else 0
+        self.vram = 0 if self.config["cpu"] else 320
+        self.vram_warnings = 0 if self.config["cpu"] else 64
+        self.vram_per_batch = 0 if self.config["cpu"] else 32
         self.batchsize = self.config["batch-size"]
         self.kwargs = self._validate_kwargs()
         self.color_format = "RGB"
@@ -46,7 +46,7 @@ class Detect(Detector):
 
         if kwargs["minsize"] < 10:
             valid = False
-        elif not all(0.0 < threshold <= 1.0 for threshold in kwargs['threshold']):
+        elif any((0.0 < threshold <= 1.0 for threshold in kwargs['threshold'])):
             valid = False
         elif not 0.0 < kwargs['factor'] < 1.0:
             valid = False
@@ -725,17 +725,26 @@ def nms(rectangles: np.ndarray,
 
     pick = []
     while len(s_sort) > 0:
-        s_bboxes = np.concatenate([  # s_sort[-1] have highest prob score, s_sort[0:-1]->others
-            np.maximum(bboxes[:2, s_sort[-1], None], bboxes[:2, s_sort[0:-1]]),
-            np.minimum(bboxes[2:, s_sort[-1], None], bboxes[2:, s_sort[0:-1]])], axis=0)
+        s_bboxes = np.concatenate(
+            [
+                np.maximum(
+                    bboxes[:2, s_sort[-1], None], bboxes[:2, s_sort[:-1]]
+                ),
+                np.minimum(
+                    bboxes[2:, s_sort[-1], None], bboxes[2:, s_sort[:-1]]
+                ),
+            ],
+            axis=0,
+        )
+
 
         inter = (np.maximum(0.0, s_bboxes[2] - s_bboxes[0] + 1) *
                  np.maximum(0.0, s_bboxes[3] - s_bboxes[1] + 1))
 
         if method == "iom":
-            var_o = inter / np.minimum(area[s_sort[-1]], area[s_sort[0:-1]])
+            var_o = inter / np.minimum(area[s_sort[-1]], area[s_sort[:-1]])
         else:
-            var_o = inter / (area[s_sort[-1]] + area[s_sort[0:-1]] - inter)
+            var_o = inter / (area[s_sort[-1]] + area[s_sort[:-1]] - inter)
 
         pick.append(s_sort[-1])
         s_sort = s_sort[np.where(var_o <= threshold)[0]]

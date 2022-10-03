@@ -238,13 +238,16 @@ class Detector(Extractor):  # pylint:disable=abstract-method
                         raise FaceswapError(msg) from err
                 raise
 
-            if angle != 0 and any([face.any() for face in batch["prediction"]]):
+            if angle != 0 and any(face.any() for face in batch["prediction"]):
                 logger.verbose("found face(s) by rotating image %s degrees", angle)
 
-            found_faces = [face if not found.any() else found
-                           for face, found in zip(batch["prediction"], found_faces)]
+            found_faces = [
+                found if found.any() else face
+                for face, found in zip(batch["prediction"], found_faces)
+            ]
 
-            if all([face.any() for face in found_faces]):
+
+            if all(face.any() for face in found_faces):
                 logger.trace("Faces found for all images")
                 break
 
@@ -424,10 +427,10 @@ class Detector(Extractor):  # pylint:disable=abstract-method
         rotated = transformed.squeeze()
 
         # Bounding box should follow x, y planes, so get min/max for non-90 degree rotations
-        pt_x = min([pnt[0] for pnt in rotated])
-        pt_y = min([pnt[1] for pnt in rotated])
-        pt_x1 = max([pnt[0] for pnt in rotated])
-        pt_y1 = max([pnt[1] for pnt in rotated])
+        pt_x = min(pnt[0] for pnt in rotated)
+        pt_y = min(pnt[1] for pnt in rotated)
+        pt_x1 = max(pnt[0] for pnt in rotated)
+        pt_y1 = max(pnt[1] for pnt in rotated)
         width = pt_x1 - pt_x
         height = pt_y1 - pt_y
 

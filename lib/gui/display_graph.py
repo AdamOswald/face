@@ -209,8 +209,7 @@ class GraphBase(ttk.Frame):  # pylint: disable=too-many-ancestors
 
         groupsize = self._lines_groupsize(raw_lines, sorted_lines)
         sorted_lines = raw_lines + sorted_lines
-        lines = self._lines_style(sorted_lines, groupsize)
-        return lines
+        return self._lines_style(sorted_lines, groupsize)
 
     @staticmethod
     def _lines_groupsize(raw_lines: List[str], sorted_lines: List[str]) -> int:
@@ -259,7 +258,7 @@ class GraphBase(ttk.Frame):  # pylint: disable=too-many-ancestors
             A list of loss keys with their corresponding line formatting and color information
         """
         logger.trace("Setting lines style")
-        groups = int(len(lines) / groupsize)
+        groups = len(lines) // groupsize
         colours = self._lines_create_colors(groupsize, groups)
         widths = list(range(1, groups + 1))
         for idx, item in enumerate(lines):
@@ -284,7 +283,7 @@ class GraphBase(ttk.Frame):  # pylint: disable=too-many-ancestors
         """
         colours = []
         for i in range(1, groups + 1):
-            for colour in self._colourmaps[0:groupsize]:
+            for colour in self._colourmaps[:groupsize]:
                 cmap = matplotlib.cm.get_cmap(colour)
                 cpoint = 1 - (i / 5)
                 colours.append(cmap(cpoint))

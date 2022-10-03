@@ -140,12 +140,8 @@ class PixelShuffler(Layer):
                              '; Received input shape:', str(input_shape))
 
         if self.data_format == 'channels_first':
-            height = None
-            width = None
-            if input_shape[2] is not None:
-                height = input_shape[2] * self.size[0]
-            if input_shape[3] is not None:
-                width = input_shape[3] * self.size[1]
+            height = input_shape[2] * self.size[0] if input_shape[2] is not None else None
+            width = input_shape[3] * self.size[1] if input_shape[3] is not None else None
             channels = input_shape[1] // self.size[0] // self.size[1]
 
             if channels * self.size[0] * self.size[1] != input_shape[1]:
@@ -156,12 +152,8 @@ class PixelShuffler(Layer):
                       height,
                       width)
         elif self.data_format == 'channels_last':
-            height = None
-            width = None
-            if input_shape[1] is not None:
-                height = input_shape[1] * self.size[0]
-            if input_shape[2] is not None:
-                width = input_shape[2] * self.size[1]
+            height = input_shape[1] * self.size[0] if input_shape[1] is not None else None
+            width = input_shape[2] * self.size[1] if input_shape[2] is not None else None
             channels = input_shape[3] // self.size[0] // self.size[1]
 
             if channels * self.size[0] * self.size[1] != input_shape[3]:
@@ -360,8 +352,7 @@ class SubPixelUpscaling(Layer):
         tensor
             A tensor or list/tuple of tensors
         """
-        retval = self._depth_to_space(inputs, self.scale_factor, self.data_format)
-        return retval
+        return self._depth_to_space(inputs, self.scale_factor, self.data_format)
 
     def compute_output_shape(self, input_shape):
         """Computes the output shape of the layer.
@@ -670,11 +661,11 @@ class GlobalMinPooling2D(_GlobalPooling2D):
         tensor
             A tensor or list/tuple of tensors
         """
-        if self.data_format == 'channels_last':
-            pooled = K.min(inputs, axis=[1, 2])
-        else:
-            pooled = K.min(inputs, axis=[2, 3])
-        return pooled
+        return (
+            K.min(inputs, axis=[1, 2])
+            if self.data_format == 'channels_last'
+            else K.min(inputs, axis=[2, 3])
+        )
 
 
 class GlobalStdDevPooling2D(_GlobalPooling2D):
@@ -697,11 +688,11 @@ class GlobalStdDevPooling2D(_GlobalPooling2D):
         tensor
             A tensor or list/tuple of tensors
         """
-        if self.data_format == 'channels_last':
-            pooled = K.std(inputs, axis=[1, 2])
-        else:
-            pooled = K.std(inputs, axis=[2, 3])
-        return pooled
+        return (
+            K.std(inputs, axis=[1, 2])
+            if self.data_format == 'channels_last'
+            else K.std(inputs, axis=[2, 3])
+        )
 
 
 class L2_normalize(Layer):  # pylint:disable=invalid-name
