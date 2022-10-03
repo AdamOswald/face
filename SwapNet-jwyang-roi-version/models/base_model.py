@@ -96,7 +96,7 @@ class BaseModel(ABC):
         """Make models eval mode during test time"""
         for name in self.model_names:
             if isinstance(name, str):
-                net = getattr(self, "net_" + name)
+                net = getattr(self, f"net_{name}")
                 net.eval()
         return self
 
@@ -141,9 +141,7 @@ class BaseModel(ABC):
         errors_ret = OrderedDict()
         for name in self.loss_names:
             if isinstance(name, str):
-                errors_ret[name] = float(
-                    getattr(self, "loss_" + name)
-                )  # float(...) works for both scalar tensor and float number
+                errors_ret[name] = float(getattr(self, f"loss_{name}"))
         return errors_ret
 
     def save_checkpoint(self, epoch):
@@ -220,10 +218,8 @@ class BaseModel(ABC):
         print("---------- Networks initialized -------------")
         for name in self.model_names:
             if isinstance(name, str):
-                net = getattr(self, "net_" + name)
-                num_params = 0
-                for param in net.parameters():
-                    num_params += param.numel()
+                net = getattr(self, f"net_{name}")
+                num_params = sum(param.numel() for param in net.parameters())
                 if verbose:
                     print(net)
                 print(

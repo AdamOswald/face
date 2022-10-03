@@ -50,9 +50,7 @@ class TextureDataset(BaseDataset):
         """
         super().__init__(opt)
         # get all texture files
-        self.texture_dir = (
-            texture_dir if texture_dir else os.path.join(opt.dataroot, "texture")
-        )
+        self.texture_dir = texture_dir or os.path.join(opt.dataroot, "texture")
         self.texture_files = find_valid_files(self.texture_dir, IMG_EXTENSIONS)
 
         self.texture_norm_stats = get_norm_stats(
@@ -62,7 +60,7 @@ class TextureDataset(BaseDataset):
         self._normalize_texture = transforms.Normalize(*self.texture_norm_stats)
 
         # cloth files
-        self.cloth_dir = cloth_dir if cloth_dir else os.path.join(opt.dataroot, "cloth")
+        self.cloth_dir = cloth_dir or os.path.join(opt.dataroot, "cloth")
         self.cloth_ext = get_dir_file_extension(self.cloth_dir)
         if not self.is_train:
             self.cloth_files = find_valid_files(self.cloth_dir, extensions=".npz")

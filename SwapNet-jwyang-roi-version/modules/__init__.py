@@ -31,8 +31,9 @@ def init_weights(net, init_type="normal", init_gain=0.02):
                 init.orthogonal_(m.weight.data, gain=init_gain)
             else:
                 raise NotImplementedError(
-                    "initialization method [%s] is not implemented" % init_type
+                    f"initialization method [{init_type}] is not implemented"
                 )
+
             if hasattr(m, "bias") and m.bias is not None:
                 init.constant_(m.bias.data, 0.0)
         elif (
@@ -41,7 +42,7 @@ def init_weights(net, init_type="normal", init_gain=0.02):
             init.normal_(m.weight.data, 1.0, init_gain)
             init.constant_(m.bias.data, 0.0)
 
-    print("initialize network with %s" % init_type)
+    print(f"initialize network with {init_type}")
     net.apply(init_func)  # apply the initialization function <init_func>
 
 
@@ -70,5 +71,5 @@ def get_norm_layer(norm_type="instance"):
     elif norm_type == "none":
         norm_layer = lambda x: Identity()
     else:
-        raise NotImplementedError("normalization layer [%s] is not found" % norm_type)
+        raise NotImplementedError(f"normalization layer [{norm_type}] is not found")
     return norm_layer

@@ -37,7 +37,7 @@ def get_mp3_url(url):
 
 def main(args):
     if len(args) != 2:
-        sys.exit("%s https://clyp.it/lolwat" %(args[0]))
+        sys.exit(f"{args[0]} https://clyp.it/lolwat")
     song_title, mp3_url = get_mp3_url(url=args[1])
     download(mp3_url=mp3_url, title=song_title)
 

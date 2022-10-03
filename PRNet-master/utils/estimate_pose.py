@@ -21,21 +21,9 @@ def matrix2angle(R):
         y: pitch
         z: roll
     '''
-    # assert(isRotationMatrix(R))
-
-    if R[2,0] !=1 or R[2,0] != -1:
-        x = asin(R[2,0])
-        y = atan2(R[2,1]/cos(x), R[2,2]/cos(x))
-        z = atan2(R[1,0]/cos(x), R[0,0]/cos(x))
-        
-    else:# Gimbal lock
-        z = 0 #can be anything
-        if R[2,0] == -1:
-            x = np.pi/2
-            y = z + atan2(R[0,1], R[0,2])
-        else:
-            x = -np.pi/2
-            y = -z + atan2(-R[0,1], -R[0,2])
+    x = asin(R[2,0])
+    y = atan2(R[2,1]/cos(x), R[2,2]/cos(x))
+    z = atan2(R[1,0]/cos(x), R[0,0]/cos(x))
 
     return x, y, z
 
@@ -83,8 +71,7 @@ def compute_similarity_transform(points_static, points_to_transform):
     rms_d1 = np.sqrt(np.mean(np.linalg.norm(p1c, axis=0)**2))
 
     s = (rms_d0/rms_d1)
-    P = np.c_[s*np.eye(3).dot(R), t_final]
-    return P
+    return np.c_[s*np.eye(3).dot(R), t_final]
 
 def estimate_pose(vertices):
     canonical_vertices = np.load('Data/uv-data/canonical_vertices.npy')

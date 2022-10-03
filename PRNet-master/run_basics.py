@@ -48,7 +48,16 @@ for i, image_path in enumerate(image_path_list):
 
     # -- save
     name = image_path.strip().split('/')[-1][:-4]
-    np.savetxt(os.path.join(save_folder, name + '.txt'), kpt) 
-    write_obj_with_colors(os.path.join(save_folder, name + '.obj'), vertices, prn.triangles, colors) #save 3d face(can open with meshlab)
+    np.savetxt(os.path.join(save_folder, f'{name}.txt'), kpt)
+    write_obj_with_colors(
+        os.path.join(save_folder, f'{name}.obj'),
+        vertices,
+        prn.triangles,
+        colors,
+    )
 
-    sio.savemat(os.path.join(save_folder, name + '_mesh.mat'), {'vertices': vertices, 'colors': colors, 'triangles': prn.triangles})
+
+    sio.savemat(
+        os.path.join(save_folder, f'{name}_mesh.mat'),
+        {'vertices': vertices, 'colors': colors, 'triangles': prn.triangles},
+    )

@@ -50,13 +50,12 @@ class GANLoss(nn.Module):
         self.gan_mode = gan_mode
         if gan_mode == "lsgan":
             self.loss = nn.MSELoss()
-        # according to DRAGAN GitHub, dragan also uses BCE loss: https://github.com/kodalinaveen3/DRAGAN/blob/master/DRAGAN.ipynb
         elif gan_mode in ["vanilla", "dragan", "dragan-gp", "dragan-lp"]:
             self.loss = nn.BCEWithLogitsLoss()
         elif "wgan" in gan_mode:
             self.loss = None
         else:
-            raise NotImplementedError("gan mode %s not implemented" % gan_mode)
+            raise NotImplementedError(f"gan mode {gan_mode} not implemented")
 
     @staticmethod
     def rand_between(low, high, normal=False):
@@ -91,15 +90,13 @@ class GANLoss(nn.Module):
                 )
             else:
                 target_tensor = self.real_label
+        elif len(self.fake_label) == 2:
+            low, high = self.real_label
+            target_tensor = GANLoss.rand_between(low, high).to(
+                self.fake_label.device
+            )
         else:
-            # smooth labels
-            if len(self.fake_label) == 2:
-                low, high = self.real_label
-                target_tensor = GANLoss.rand_between(low, high).to(
-                    self.fake_label.device
-                )
-            else:
-                target_tensor = self.fake_label
+            target_tensor = self.fake_label
         return target_tensor.expand_as(prediction)
 
     def __call__(self, prediction, target_is_real):
@@ -116,10 +113,7 @@ class GANLoss(nn.Module):
             target_tensor = self.get_target_tensor(prediction, target_is_real)
             loss = self.loss(prediction, target_tensor)
         elif "wgan" in self.gan_mode:
-            if target_is_real:
-                loss = -prediction.mean()
-            else:
-                loss = prediction.mean()
+            loss = -prediction.mean() if target_is_real else prediction.mean()
         else:
             raise ValueError(f"{self.gan_mode} not recognized")
         return loss

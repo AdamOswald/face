@@ -6,8 +6,7 @@ from torchvision.models import vgg16
 def gram_matrix(tensor):
     b, c, h, w = tensor.size()
     tensor = tensor.view(b * c, h * w)
-    gram = torch.mm(tensor, tensor.t())
-    return gram
+    return torch.mm(tensor, tensor.t())
 
 
 class PerceptualLoss(nn.Module):
@@ -69,11 +68,13 @@ class PerceptualLoss(nn.Module):
         """Assumes x in [0, 1]: transform to [-1, 1]."""
         x = 2.0 * x - 1.0
         feats = []
-        for i, s in enumerate(self.net):
+        for s in self.net:
             x = s(x)
-            if self.normalize:  # unit L2 norm over features, this implies the loss is a cosine loss in feature space
-                f = x / (torch.sqrt(torch.pow(x, 2).sum(1, keepdim=True)) + 1e-8)
-            else:
-                f = x
+            f = (
+                x / (torch.sqrt(torch.pow(x, 2).sum(1, keepdim=True)) + 1e-8)
+                if self.normalize
+                else x
+            )
+
             feats.append(f)
         return feats

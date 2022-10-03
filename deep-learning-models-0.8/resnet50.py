@@ -53,24 +53,23 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
         Output tensor for the block.
     """
     filters1, filters2, filters3 = filters
-    if K.image_data_format() == 'channels_last':
-        bn_axis = 3
-    else:
-        bn_axis = 1
-    conv_name_base = 'res' + str(stage) + block + '_branch'
-    bn_name_base = 'bn' + str(stage) + block + '_branch'
+    bn_axis = 3 if K.image_data_format() == 'channels_last' else 1
+    conv_name_base = f'res{str(stage)}{block}_branch'
+    bn_name_base = f'bn{str(stage)}{block}_branch'
 
-    x = Conv2D(filters1, (1, 1), name=conv_name_base + '2a')(input_tensor)
-    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
+    x = Conv2D(filters1, (1, 1), name=f'{conv_name_base}2a')(input_tensor)
+    x = BatchNormalization(axis=bn_axis, name=f'{bn_name_base}2a')(x)
     x = Activation('relu')(x)
 
-    x = Conv2D(filters2, kernel_size,
-               padding='same', name=conv_name_base + '2b')(x)
-    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
+    x = Conv2D(
+        filters2, kernel_size, padding='same', name=f'{conv_name_base}2b'
+    )(x)
+
+    x = BatchNormalization(axis=bn_axis, name=f'{bn_name_base}2b')(x)
     x = Activation('relu')(x)
 
-    x = Conv2D(filters3, (1, 1), name=conv_name_base + '2c')(x)
-    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
+    x = Conv2D(filters3, (1, 1), name=f'{conv_name_base}2c')(x)
+    x = BatchNormalization(axis=bn_axis, name=f'{bn_name_base}2c')(x)
 
     x = layers.add([x, input_tensor])
     x = Activation('relu')(x)
@@ -94,29 +93,32 @@ def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2))
     And the shortcut should have strides=(2,2) as well
     """
     filters1, filters2, filters3 = filters
-    if K.image_data_format() == 'channels_last':
-        bn_axis = 3
-    else:
-        bn_axis = 1
-    conv_name_base = 'res' + str(stage) + block + '_branch'
-    bn_name_base = 'bn' + str(stage) + block + '_branch'
+    bn_axis = 3 if K.image_data_format() == 'channels_last' else 1
+    conv_name_base = f'res{str(stage)}{block}_branch'
+    bn_name_base = f'bn{str(stage)}{block}_branch'
 
-    x = Conv2D(filters1, (1, 1), strides=strides,
-               name=conv_name_base + '2a')(input_tensor)
-    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
+    x = Conv2D(filters1, (1, 1), strides=strides, name=f'{conv_name_base}2a')(
+        input_tensor
+    )
+
+    x = BatchNormalization(axis=bn_axis, name=f'{bn_name_base}2a')(x)
     x = Activation('relu')(x)
 
-    x = Conv2D(filters2, kernel_size, padding='same',
-               name=conv_name_base + '2b')(x)
-    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
+    x = Conv2D(
+        filters2, kernel_size, padding='same', name=f'{conv_name_base}2b'
+    )(x)
+
+    x = BatchNormalization(axis=bn_axis, name=f'{bn_name_base}2b')(x)
     x = Activation('relu')(x)
 
-    x = Conv2D(filters3, (1, 1), name=conv_name_base + '2c')(x)
-    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
+    x = Conv2D(filters3, (1, 1), name=f'{conv_name_base}2c')(x)
+    x = BatchNormalization(axis=bn_axis, name=f'{bn_name_base}2c')(x)
 
-    shortcut = Conv2D(filters3, (1, 1), strides=strides,
-                      name=conv_name_base + '1')(input_tensor)
-    shortcut = BatchNormalization(axis=bn_axis, name=bn_name_base + '1')(shortcut)
+    shortcut = Conv2D(
+        filters3, (1, 1), strides=strides, name=f'{conv_name_base}1'
+    )(input_tensor)
+
+    shortcut = BatchNormalization(axis=bn_axis, name=f'{bn_name_base}1')(shortcut)
 
     x = layers.add([x, shortcut])
     x = Activation('relu')(x)
@@ -195,15 +197,13 @@ def ResNet50(include_top=True, weights='imagenet',
     if input_tensor is None:
         img_input = Input(shape=input_shape)
     else:
-        if not K.is_keras_tensor(input_tensor):
-            img_input = Input(tensor=input_tensor, shape=input_shape)
-        else:
-            img_input = input_tensor
-    if K.image_data_format() == 'channels_last':
-        bn_axis = 3
-    else:
-        bn_axis = 1
+        img_input = (
+            input_tensor
+            if K.is_keras_tensor(input_tensor)
+            else Input(tensor=input_tensor, shape=input_shape)
+        )
 
+    bn_axis = 3 if K.image_data_format() == 'channels_last' else 1
     x = ZeroPadding2D((3, 3))(img_input)
     x = Conv2D(64, (7, 7), strides=(2, 2), name='conv1')(x)
     x = BatchNormalization(axis=bn_axis, name='bn_conv1')(x)
@@ -235,18 +235,14 @@ def ResNet50(include_top=True, weights='imagenet',
     if include_top:
         x = Flatten()(x)
         x = Dense(classes, activation='softmax', name='fc1000')(x)
-    else:
-        if pooling == 'avg':
-            x = GlobalAveragePooling2D()(x)
-        elif pooling == 'max':
-            x = GlobalMaxPooling2D()(x)
+    elif pooling == 'avg':
+        x = GlobalAveragePooling2D()(x)
+    elif pooling == 'max':
+        x = GlobalMaxPooling2D()(x)
 
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
-    if input_tensor is not None:
-        inputs = get_source_inputs(input_tensor)
-    else:
-        inputs = img_input
+    inputs = img_input if input_tensor is None else get_source_inputs(input_tensor)
     # Create model.
     model = Model(inputs, x, name='resnet50')
 
