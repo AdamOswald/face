@@ -247,10 +247,13 @@ class DetectedFace():
             A 3D array containing the decompressed training masks as uint8 in 0-255 range if
             training masks are present otherwise ``None``
         """
-        if not self._training_masks:
-            return None
-        return np.frombuffer(decompress(self._training_masks[0]),
-                             dtype="uint8").reshape(self._training_masks[1])
+        return (
+            np.frombuffer(
+                decompress(self._training_masks[0]), dtype="uint8"
+            ).reshape(self._training_masks[1])
+            if self._training_masks
+            else None
+        )
 
     def to_alignment(self) -> AlignmentFileDict:
         """  Return the detected face formatted for an alignments file
@@ -297,8 +300,12 @@ class DetectedFace():
             Default: ``False``
         """
 
-        logger.trace("Creating from alignment: (alignment: %s, has_image: %s)",  # type: ignore
-                     alignment, bool(image is not None))
+        logger.trace(
+            "Creating from alignment: (alignment: %s, has_image: %s)",
+            alignment,
+            image is not None,
+        )
+
         self.left = alignment["x"]
         self.width = alignment["w"]
         self.top = alignment["y"]
@@ -334,14 +341,14 @@ class DetectedFace():
         """
         if (self.left is None or self.width is None or self.top is None or self.height is None):
             raise AssertionError("Some detected face variables have not been initialized")
-        alignment = PNGHeaderAlignmentsDict(
+        return PNGHeaderAlignmentsDict(
             x=self.left,
             w=self.width,
             y=self.top,
             h=self.height,
             landmarks_xy=self.landmarks_xy.tolist(),
-            mask={name: mask.to_png_meta() for name, mask in self.mask.items()})
-        return alignment
+            mask={name: mask.to_png_meta() for name, mask in self.mask.items()},
+        )
 
     def from_png_meta(self, alignment: PNGHeaderAlignmentsDict) -> None:
         """ Set the attributes of this class from alignments stored in a png exif header.

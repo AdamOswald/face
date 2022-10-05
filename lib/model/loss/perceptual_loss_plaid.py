@@ -401,8 +401,7 @@ class LDRFLIPLoss():  # pylint:disable=too-few-public-methods
         delta_e_color = self._color_pipeline(true_ycxcz, pred_ycxcz)
         delta_e_features = self._process_features(true_ycxcz, pred_ycxcz)
 
-        loss = K.pow(delta_e_color, 1 - delta_e_features)
-        return loss
+        return K.pow(delta_e_color, 1 - delta_e_features)
 
     def _color_pipeline(self,
                         y_true: plaidml.tile.Value,
@@ -487,8 +486,7 @@ class LDRFLIPLoss():  # pylint:disable=too-few-public-methods
             The hunt adjusted batch of images in L*a*b color space
         """
         ch_l = image[..., 0:1]
-        adjusted = K.concatenate([ch_l, image[..., 1:] * (ch_l * 0.01)], axis=-1)
-        return adjusted
+        return K.concatenate([ch_l, image[..., 1:] * (ch_l * 0.01)], axis=-1)
 
     def _hyab(self, y_true, y_pred):
         """ Compute the HyAB distance between true and predicted images.
@@ -527,11 +525,12 @@ class LDRFLIPLoss():  # pylint:disable=too-few-public-methods
             The redistributed per-pixel HyAB distances (in range [0,1])
         """
         pccmax = self._pc * cmax
-        delta_e_c = K.switch(
+        return K.switch(
             power_delta_e_hyab < pccmax,
             (self._pt / pccmax) * power_delta_e_hyab,
-            self._pt + ((power_delta_e_hyab - pccmax) / (cmax - pccmax)) * (1.0 - self._pt))
-        return delta_e_c
+            self._pt
+            + ((power_delta_e_hyab - pccmax) / (cmax - pccmax)) * (1.0 - self._pt),
+        )
 
 
 class _SpatialFilters():  # pylint:disable=too-few-public-methods
@@ -626,8 +625,7 @@ class _SpatialFilters():  # pylint:disable=too-few-public-methods
                                         self._spatial_filters,
                                         strides=(1, 1),
                                         padding="valid")
-        rgb = K.clip(self._ycxcz2rgb(image_tilde_opponent), 0., 1.)
-        return rgb
+        return K.clip(self._ycxcz2rgb(image_tilde_opponent), 0., 1.)
 
 
 class _FeatureDetection():  # pylint:disable=too-few-public-methods
@@ -687,8 +685,7 @@ class _FeatureDetection():  # pylint:disable=too-few-public-methods
                               kernel,
                               strides=(1, 1),
                               padding="valid")
-        features = K.concatenate([features_x, features_y], axis=-1)
-        return features
+        return K.concatenate([features_x, features_y], axis=-1)
 
 
 class MSSIMLoss(DSSIMObjective):  # pylint:disable=too-few-public-methods

@@ -69,7 +69,7 @@ class Masker(Extractor):  # pylint:disable=abstract-method
         self._storage_name = self.__module__.split(".")[-1].replace("_", "-")
         self._storage_centering = "face"  # Centering to store the mask at
         self._storage_size = 128  # Size to store masks at. Leave this at default
-        self._faces_per_filename = dict()  # Tracking for recompiling face batches
+        self._faces_per_filename = {}
         self._rollover = None  # Items that are rolled over from the previous batch in get_batch
         self._output_faces = []
         logger.debug("Initialized %s", self.__class__.__name__)
@@ -108,7 +108,7 @@ class Masker(Extractor):  # pylint:disable=abstract-method
             A dictionary of lists of :attr:`~plugins.extract._base.Extractor.batchsize`:
         """
         exhausted = False
-        batch = dict()
+        batch = {}
         idx = 0
         while idx < self.batchsize:
             item = self._collect_item(queue)

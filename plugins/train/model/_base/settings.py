@@ -128,7 +128,7 @@ class Loss():
         """ list: The list of input tensors to the model that contain the mask. Returns ``None``
         if there is no mask input to the model. """
         mask_inputs = [inp for inp in self._inputs if inp.name.startswith("mask")]
-        return None if not mask_inputs else mask_inputs
+        return mask_inputs or None
 
     @property
     def _mask_shapes(self) -> Optional[List[tuple]]:
@@ -250,8 +250,7 @@ class Loss():
                               weight=weight,
                               mask_channel=self._mask_channels[0])
 
-        channel_idx = 1
-        for section in ("eye_multiplier", "mouth_multiplier"):
+        for channel_idx, section in enumerate(("eye_multiplier", "mouth_multiplier"), start=1):
             mask_channel = self._mask_channels[channel_idx]
             multiplier = self._config[section] * 1.
             if multiplier > 1.:
@@ -259,7 +258,6 @@ class Loss():
                 loss_wrapper.add_loss(self._get_function(loss_function),
                                       weight=weight * multiplier,
                                       mask_channel=mask_channel)
-            channel_idx += 1
 
     def _get_mask_channels(self) -> List[int]:
         """ Obtain the channels from the face targets that the masks reside in from the training

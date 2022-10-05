@@ -64,8 +64,10 @@ def block_test(layer_func, kwargs={}, input_shape=None):
 
 _PARAMS = ["use_icnr_init", "use_convaware_init", "use_reflect_padding"]
 _VALUES = list(product([True, False], repeat=len(_PARAMS)))
-_IDS = ["{}[{}]".format("|".join([_PARAMS[idx] for idx, b in enumerate(v) if b]),
-                        get_backend().upper()) for v in _VALUES]
+_IDS = [
+    f'{"|".join([_PARAMS[idx] for idx, b in enumerate(v) if b])}[{get_backend().upper()}]'
+    for v in _VALUES
+]
 
 
 @pytest.mark.parametrize(_PARAMS, _VALUES, ids=_IDS)

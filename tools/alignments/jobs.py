@@ -101,7 +101,7 @@ class Check():
         action = self._job.replace("-", "_")
         processor = getattr(self, f"_get_{action}")
         logger.debug("Processor: %s", processor)
-        return [item for item in processor()]  # pylint:disable=unnecessary-comprehension
+        return list(processor())
 
     def _get_no_faces(self):
         """ yield each frame that has no face match in alignments file """
@@ -117,8 +117,7 @@ class Check():
         """ yield each frame or face that has multiple faces
             matched in alignments file """
         process_type = getattr(self, f"_get_multi_faces_{self._type}")
-        for item in process_type():
-            yield item
+        yield from process_type()
 
     def _get_multi_faces_frames(self):
         """ Return Frames that contain multiple faces """
@@ -143,7 +142,7 @@ class Check():
     def _get_missing_alignments(self):
         """ yield each frame that does not exist in alignments file """
         self.output_message = "Frames missing from alignments file"
-        exclude_filetypes = set(["yaml", "yml", "p", "json", "txt"])
+        exclude_filetypes = {"yaml", "yml", "p", "json", "txt"}
         for frame in tqdm(self._items, desc=self.output_message):
             frame_name = frame["frame_fullname"]
             if (frame["frame_extension"] not in exclude_filetypes
@@ -155,7 +154,7 @@ class Check():
         """ yield each frame in alignments that does
             not have a matching file """
         self.output_message = "Missing frames that are in alignments file"
-        frames = set(item["frame_fullname"] for item in self._items)
+        frames = {item["frame_fullname"] for item in self._items}
         for frame in tqdm(self._alignments.data.keys(), desc=self.output_message):
             if frame not in frames:
                 logger.debug("Returning: '%s'", frame)
@@ -1046,7 +1045,7 @@ class Rename():  # pylint:disable=too-few-public-methods
         if alignments.version < 2.1:
             # Update headers of faces generated with hash based alignments
             kwargs["alignments"] = alignments
-        self._faces = faces if faces else Faces(arguments.faces_dir, **kwargs)
+        self._faces = faces or Faces(arguments.faces_dir, **kwargs)
         logger.debug("Initialized %s", self.__class__.__name__)
 
     def process(self) -> None:
@@ -1089,7 +1088,7 @@ class Rename():  # pylint:disable=too-few-public-methods
                 # process afterwards
                 logger.debug("interim renaming file to avoid conflict: (src: '%s', dst: '%s')",
                              src, dst)
-                new = new + ".tmp"
+                new = f"{new}.tmp"
                 conflicts.append(new)
 
             logger.verbose("Renaming '%s' to '%s'", old, new)
@@ -1126,8 +1125,7 @@ class Sort():
     def process(self) -> None:
         """ Execute the sort process """
         logger.info("[SORT INDEXES]")  # Tidy up cli output
-        reindexed = self.reindex_faces()
-        if reindexed:
+        if reindexed := self.reindex_faces():
             self._alignments.save()
             logger.warning("If you have a face-set corresponding to the alignment file you "
                            "processed then you should run the 'Extract' job to regenerate it.")

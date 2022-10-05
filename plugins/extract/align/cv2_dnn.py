@@ -152,8 +152,7 @@ class Align(Aligner):
         """ Predict the 68 point landmarks """
         logger.trace("Predicting Landmarks")
         self.model.setInput(batch)
-        retval = self.model.forward()
-        return retval
+        return self.model.forward()
 
     def process_output(self, batch):
         """ Process the output from the model """

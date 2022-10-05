@@ -58,8 +58,7 @@ class _Backend():  # pylint:disable=too-few-public-methods
             The path to the Faceswap configuration file
         """
         pypath = os.path.dirname(os.path.realpath(sys.argv[0]))
-        config_file = os.path.join(pypath, "config", ".faceswap")
-        return config_file
+        return os.path.join(pypath, "config", ".faceswap")
 
     def _get_backend(self) -> ValidBackends:
         """ Return the backend from either the `FACESWAP_BACKEND` Environment Variable or from

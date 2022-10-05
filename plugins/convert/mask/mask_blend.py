@@ -261,12 +261,15 @@ class Mask():  # pylint:disable=too-few-public-methods
         face_size = self._box.shape[0]
         if mask_size != face_size:
             interp = cv2.INTER_CUBIC if mask_size < face_size else cv2.INTER_AREA
-            face_mask = cv2.resize(face_mask,
-                                   self._box.shape[:2],
-                                   interpolation=interp)[..., None].astype("float32") / 255.
+            return (
+                cv2.resize(face_mask, self._box.shape[:2], interpolation=interp)[
+                    ..., None
+                ].astype("float32")
+                / 255.0
+            )
+
         else:
-            face_mask = face_mask.astype("float32") / 255.
-        return face_mask
+            return face_mask.astype("float32") / 255.
 
     # MASK MANIPULATIONS
     def _erode(self, mask: np.ndarray) -> np.ndarray:

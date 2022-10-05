@@ -221,7 +221,7 @@ class _ScorePool():  # pylint:disable=too-few-public-methods
         tensor
             The output tensor from the score pool block
         """
-        var_x = Lambda(lambda x: x * self._scale, name="scale" + self._name)(inputs)
-        var_x = Conv2D(2, 1, activation="linear", name="score" + self._name + "_r")(var_x)
-        var_x = Cropping2D(cropping=self._cropping, name="score" + self._name + "c")(var_x)
+        var_x = Lambda(lambda x: x * self._scale, name=f"scale{self._name}")(inputs)
+        var_x = Conv2D(2, 1, activation="linear", name=f"score{self._name}_r")(var_x)
+        var_x = Cropping2D(cropping=self._cropping, name=f"score{self._name}c")(var_x)
         return var_x

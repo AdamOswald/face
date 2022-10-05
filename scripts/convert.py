@@ -80,10 +80,7 @@ class Convert():  # pylint:disable=too-few-public-methods
     @property
     def _queue_size(self):
         """ int: Size of the converter queues. 16 for single process otherwise 32 """
-        if self._args.singleprocess:
-            retval = 16
-        else:
-            retval = 32
+        retval = 16 if self._args.singleprocess else 32
         logger.debug(retval)
         return retval
 
@@ -133,12 +130,8 @@ class Convert():  # pylint:disable=too-few-public-methods
         if (not self._args.on_the_fly and
                 self._args.mask_type not in ("none", "predicted") and
                 not self._alignments.mask_is_valid(self._args.mask_type)):
-            msg = ("You have selected the Mask Type `{}` but at least one face does not have this "
-                   "mask stored in the Alignments File.\nYou should generate the required masks "
-                   "with the Mask Tool or set the Mask Type option to an existing Mask Type.\nA "
-                   "summary of existing masks is as follows:\nTotal faces: {}, Masks: "
-                   "{}".format(self._args.mask_type, self._alignments.faces_count,
-                               self._alignments.mask_summary))
+            msg = f"You have selected the Mask Type `{self._args.mask_type}` but at least one face does not have this mask stored in the Alignments File.\nYou should generate the required masks with the Mask Tool or set the Mask Type option to an existing Mask Type.\nA summary of existing masks is as follows:\nTotal faces: {self._alignments.faces_count}, Masks: {self._alignments.mask_summary}"
+
             raise FaceswapError(msg)
 
         if self._args.mask_type == "predicted" and not self._predictor.has_predicted_mask:
@@ -300,7 +293,7 @@ class DiskIO():
     def _total_count(self):
         """ int: The total number of frames to be converted """
         if self._frame_ranges and not self._args.keep_unchanged:
-            retval = sum([fr[1] - fr[0] + 1 for fr in self._frame_ranges])
+            retval = sum(fr[1] - fr[0] + 1 for fr in self._frame_ranges)
         else:
             retval = self._images.count
         logger.debug(retval)
@@ -346,18 +339,18 @@ class DiskIO():
         minframe, maxframe = None, None
         if self._images.is_video:
             minframe, maxframe = 1, self._images.count
-        else:
-            indices = [int(self._imageidxre.findall(os.path.basename(filename))[0])
-                       for filename in self._images.file_list]
-            if indices:
-                minframe, maxframe = min(indices), max(indices)
+        elif indices := [
+            int(self._imageidxre.findall(os.path.basename(filename))[0])
+            for filename in self._images.file_list
+        ]:
+            minframe, maxframe = min(indices), max(indices)
         logger.debug("minframe: %s, maxframe: %s", minframe, maxframe)
 
         if minframe is None or maxframe is None:
             raise FaceswapError("Frame Ranges specified, but could not determine frame numbering "
                                 "from filenames")
 
-        retval = list()
+        retval = []
         for rng in self._args.frame_ranges:
             if "-" not in rng:
                 raise FaceswapError("Frame Ranges not specified in the correct format")
@@ -444,7 +437,7 @@ class DiskIO():
         """
         logger.debug("Starting thread: '%s'", task)
         args = self._completion_event if task == "save" else None
-        func = getattr(self, "_{}".format(task))
+        func = getattr(self, f"_{task}")
         io_thread = MultiThread(func, args, thread_count=1)
         io_thread.start()
         self._threads[task] = io_thread
@@ -534,10 +527,12 @@ class DiskIO():
             List of :class:`lib.align.DetectedFace` objects
         """
         logger.trace("Getting faces for: '%s'", filename)
-        if not self._extractor:
-            detected_faces = self._alignments_faces(os.path.basename(filename), image)
-        else:
-            detected_faces = self._detect_faces(filename, image)
+        detected_faces = (
+            self._detect_faces(filename, image)
+            if self._extractor
+            else self._alignments_faces(os.path.basename(filename), image)
+        )
+
         logger.trace("Got %s faces for: '%s'", len(detected_faces), filename)
         return detected_faces
 
@@ -557,10 +552,10 @@ class DiskIO():
             List of :class:`lib.align.DetectedFace` objects
         """
         if not self._check_alignments(frame_name):
-            return list()
+            return []
 
         faces = self._alignments.get_faces_in_frame(frame_name)
-        detected_faces = list()
+        detected_faces = []
 
         for rawface in faces:
             face = DetectedFace()
@@ -585,8 +580,7 @@ class DiskIO():
         """
         have_alignments = self._alignments.frame_exists(frame_name)
         if not have_alignments:
-            tqdm.write("No alignment found for {}, "
-                       "skipping".format(frame_name))
+            tqdm.write(f"No alignment found for {frame_name}, skipping")
         return have_alignments
 
     def _detect_faces(self, filename, image):
@@ -732,9 +726,12 @@ class Predict():
             input_size in pixels and output_size in pixels
         """
         input_shape = self._model.model.input_shape
-        input_shape = [input_shape] if not isinstance(input_shape, list) else input_shape
+        input_shape = input_shape if isinstance(input_shape, list) else [input_shape]
         output_shape = self._model.model.output_shape
-        output_shape = [output_shape] if not isinstance(output_shape, list) else output_shape
+        output_shape = (
+            output_shape if isinstance(output_shape, list) else [output_shape]
+        )
+
         retval = dict(input=input_shape[0][1], output=output_shape[-1][1])
         logger.debug(retval)
         return retval
@@ -805,9 +802,10 @@ class Predict():
         statefile = [fname for fname in os.listdir(str(model_dir))
                      if fname.endswith("_state.json")]
         if len(statefile) != 1:
-            raise FaceswapError("There should be 1 state file in your model folder. {} were "
-                                "found. Specify a trainer with the '-t', '--trainer' "
-                                "option.".format(len(statefile)))
+            raise FaceswapError(
+                f"There should be 1 state file in your model folder. {len(statefile)} were found. Specify a trainer with the '-t', '--trainer' option."
+            )
+
         statefile = os.path.join(str(model_dir), statefile[0])
 
         state = self._serializer.load(statefile)
@@ -841,7 +839,7 @@ class Predict():
         """
         faces_seen = 0
         consecutive_no_faces = 0
-        batch = list()
+        batch = []
         is_amd = get_backend() == "amd"
         while True:
             item = self._in_queue.get()
@@ -884,13 +882,13 @@ class Predict():
                         batch_size = 1
                     predicted = self._predict(feed_faces, batch_size)
                 else:
-                    predicted = list()
+                    predicted = []
 
                 self._queue_out_frames(batch, predicted)
 
             consecutive_no_faces = 0
             faces_seen = 0
-            batch = list()
+            batch = []
             if item == "EOF":
                 logger.debug("EOF Received")
                 break
@@ -1014,7 +1012,7 @@ class Predict():
         for item in batch:
             num_faces = len(item["detected_faces"])
             if num_faces == 0:
-                item["swapped_faces"] = np.array(list())
+                item["swapped_faces"] = np.array([])
             else:
                 item["swapped_faces"] = swapped_faces[pointer:pointer + num_faces]
 
@@ -1073,7 +1071,7 @@ class OptionalActions():  # pylint:disable=too-few-public-methods
         dict
             Dictionary of source frame names with a list of associated face indices to be skipped
         """
-        retval = dict()
+        retval = {}
         input_aligned_dir = self._args.input_aligned_dir
 
         if input_aligned_dir is None:
@@ -1097,16 +1095,16 @@ class OptionalActions():  # pylint:disable=too-few-public-methods
                     logger.warning("Legacy faces discovered in '%s'. These faces will be updated",
                                    input_aligned_dir)
                     log_once = True
-                data = update_legacy_png_header(fullpath, self._alignments)
-                if not data:
+                if data := update_legacy_png_header(fullpath, self._alignments):
+                    meta = data["source"]
+                else:
                     raise FaceswapError(
-                        "Some of the faces being passed in from '{}' could not be matched to the "
-                        "alignments file '{}'\nPlease double check your sources and try "
-                        "again.".format(input_aligned_dir, self._alignments.file))
-                meta = data["source"]
+                        f"Some of the faces being passed in from '{input_aligned_dir}' could not be matched to the alignments file '{self._alignments.file}'\nPlease double check your sources and try again."
+                    )
+
             else:
                 meta = metadata["itxt"]["source"]
-            retval.setdefault(meta["source_filename"], list()).append(meta["face_index"])
+            retval.setdefault(meta["source_filename"], []).append(meta["face_index"])
 
         if not retval:
             raise FaceswapError("Aligned directory is empty, no faces will be converted!")

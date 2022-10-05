@@ -87,7 +87,7 @@ class TrainerBase():
 
         self._model.state.add_session_batchsize(batch_size)
         self._images = images
-        self._sides = sorted(key for key in self._images.keys())
+        self._sides = sorted(iter(self._images))
 
         self._feeder = _Feeder(images, self._model, batch_size, self._config)
 
@@ -262,10 +262,7 @@ class TrainerBase():
             # ref: https://github.com/keras-team/keras/issues/16173
             with tf.summary.record_if(True), self._tensorboard._train_writer.as_default():  # noqa pylint:disable=protected-access,not-context-manager
                 for name, value in logs.items():
-                    tf.summary.scalar(
-                        "batch_" + name,
-                        value,
-                        step=self._tensorboard._train_step)  # pylint:disable=protected-access
+                    tf.summary.scalar(f"batch_{name}", value, step=self._tensorboard._train_step)
         else:
             self._tensorboard.on_train_batch_end(self._model.iterations, logs=logs)
 
@@ -422,12 +419,13 @@ class _Feeder():
         logger.debug("Loading generator, side: %s, is_display: %s,  batch_size: %s",
                      side, is_display, batch_size)
         generator = PreviewDataGenerator if is_display else TrainingDataGenerator
-        retval = generator(self._config,
-                           self._model,
-                           side,
-                           self._images[side] if images is None else images,
-                           self._batch_size if batch_size is None else batch_size)
-        return retval
+        return generator(
+            self._config,
+            self._model,
+            side,
+            self._images[side] if images is None else images,
+            self._batch_size if batch_size is None else batch_size,
+        )
 
     def _set_preview_feed(self) -> Dict[Literal["a", "b"], Generator[BatchType, None, None]]:
         """ Set the preview feed for this feeder.
@@ -547,9 +545,12 @@ class _Feeder():
         retval: Dict[Literal["a", "b"], List[np.ndarray]] = {}
         for side in get_args(Literal["a", "b"]):
             logger.debug("Compiling samples: (side: '%s', samples: %s)", side, num_images)
-            retval[side] = [feed[side][0:num_images],
-                            samples[side][0:num_images],
-                            masks[side][0:num_images]]
+            retval[side] = [
+                feed[side][:num_images],
+                samples[side][:num_images],
+                masks[side][:num_images],
+            ]
+
         logger.debug("Compiled Samples: %s", {k: [i.shape for i in v] for k, v in retval.items()})
         return retval
 
@@ -1062,7 +1063,7 @@ class _Timelapse():  # pylint:disable=too-few-public-methods
         image = self._samples.show_sample()
         if image is None:
             return
-        filename = os.path.join(self._output_file, str(int(time.time())) + ".jpg")
+        filename = os.path.join(self._output_file, f"{int(time.time())}.jpg")
 
         cv2.imwrite(filename, image)
         logger.debug("Created time-lapse: '%s'", filename)

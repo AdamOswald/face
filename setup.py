@@ -110,30 +110,30 @@ class Environment():
     def is_virtualenv(self) -> bool:
         """ Check whether this is a virtual environment """
         if not self.is_conda:
-            retval = (hasattr(sys, "real_prefix") or
-                      (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix))
-        else:
-            prefix = os.path.dirname(sys.prefix)
-            retval = (os.path.basename(prefix) == "envs")
-        return retval
+            return hasattr(sys, "real_prefix") or (
+                hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix
+            )
+
+        prefix = os.path.dirname(sys.prefix)
+        return (os.path.basename(prefix) == "envs")
 
     def _process_arguments(self) -> None:
         """ Process any cli arguments and dummy in cli arguments if calling from updater. """
-        args = [arg for arg in sys.argv]  # pylint:disable=unnecessary-comprehension
+        args = list(sys.argv)
         if self.updater:
             from lib.utils import get_backend  # pylint:disable=import-outside-toplevel
             args.append(f"--{get_backend()}")
 
         logger.debug(args)
         for arg in args:
-            if arg == "--installer":
-                self.is_installer = True
-            if arg == "--nvidia":
-                self.enable_cuda = True
             if arg == "--amd":
                 self.enable_amd = True
-            if arg == "--apple-silicon":
+            elif arg == "--apple-silicon":
                 self.enable_apple_silicon = True
+            elif arg == "--installer":
+                self.is_installer = True
+            elif arg == "--nvidia":
+                self.enable_cuda = True
 
     def get_required_packages(self) -> None:
         """ Load requirements list """
@@ -151,7 +151,7 @@ class Environment():
         for req_file in req_files:
             requirements_file = os.path.join(pypath, "requirements", req_file)
             with open(requirements_file, encoding="utf8") as req:
-                for package in req.readlines():
+                for package in req:
                     package = package.strip()
                     if package and (not package.startswith(("#", "-r"))):
                         requirements.append(package)
@@ -181,7 +181,11 @@ class Environment():
             logger.info("The tool provides tips for installation and installs required python "
                         "packages")
         logger.info("Setup in %s %s", self.os_version[0], self.os_version[1])
-        if not self.updater and not self.os_version[0] in ["Windows", "Linux", "Darwin"]:
+        if not self.updater and self.os_version[0] not in [
+            "Windows",
+            "Linux",
+            "Darwin",
+        ]:
             logger.error("Your system %s is not supported!", self.os_version[0])
             sys.exit(1)
         if self.os_version[0].lower() == "darwin" and platform.machine() == "arm64":
@@ -231,8 +235,16 @@ class Environment():
         if not self.is_conda:
             # Don't do this with Conda, as we must use Conda version of pip
             logger.info("Upgrading pip...")
-            pipexe = [sys.executable, "-m", "pip"]
-            pipexe.extend(["install", "--no-cache-dir", "-qq", "--upgrade"])
+            pipexe = [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--no-cache-dir",
+                "-qq",
+                "--upgrade",
+            ]
+
             if not self.is_admin and not self.is_virtualenv:
                 pipexe.append("--user")
             pipexe.append("pip")
@@ -550,7 +562,7 @@ class CudaCheck():  # pylint:disable=too-few-public-methods
         self._cudnn_header_files: List[str] = ["cudnn_version.h", "cudnn.h"]
         logger.debug("cuda keys: %s, cudnn header files: %s",
                      self._cuda_keys, self._cudnn_header_files)
-        if self._os in ("windows", "linux"):
+        if self._os in {"windows", "linux"}:
             self._cuda_check()
             self._cudnn_check()
 
@@ -569,8 +581,7 @@ class CudaCheck():  # pylint:disable=too-few-public-methods
             if version is not None:
                 self.cuda_version = version.groupdict().get("cuda", None)
             locate = "where" if self._os == "windows" else "which"
-            path = os.popen(f"{locate} nvcc").read()
-            if path:
+            if path := os.popen(f"{locate} nvcc").read():
                 path = path.split("\n")[0]  # Split multiple entries and take first found
                 while True:  # Get Cuda root folder
                     path, split = os.path.split(path)
@@ -652,8 +663,7 @@ class CudaCheck():  # pylint:disable=too-few-public-methods
 
         cudnn_path = os.path.realpath(chk[chk.find("=>") + 3:chk.find("libcudnn") - 1])
         cudnn_path = cudnn_path.replace("lib", "include")
-        cudnn_checkfiles = [os.path.join(cudnn_path, header) for header in header_files]
-        return cudnn_checkfiles
+        return [os.path.join(cudnn_path, header) for header in header_files]
 
     def _get_checkfiles_windows(self) -> List[str]:
         """ Return the check-file locations for Windows. Just looks inside the include folder of
@@ -668,8 +678,7 @@ class CudaCheck():  # pylint:disable=too-few-public-methods
         if not self.cuda_path:
             return []
         scandir = os.path.join(self.cuda_path, "include")
-        cudnn_checkfiles = [os.path.join(scandir, header) for header in self._cudnn_header_files]
-        return cudnn_checkfiles
+        return [os.path.join(scandir, header) for header in self._cudnn_header_files]
 
 
 class Install():  # pylint:disable=too-few-public-methods
@@ -748,9 +757,10 @@ class Install():  # pylint:disable=too-few-public-methods
                 self._env.missing_packages.append((key, specs))
 
         for priority in reversed(_PRIORITY):
-            # Put priority packages at beginning of list
-            package = next((pkg for pkg in self._env.missing_packages if pkg[0] == priority), None)
-            if package:
+            if package := next(
+                (pkg for pkg in self._env.missing_packages if pkg[0] == priority),
+                None,
+            ):
                 idx = self._env.missing_packages.index(package)
                 self._env.missing_packages.insert(0, self._env.missing_packages.pop(idx))
         logger.debug(self._env.missing_packages)
@@ -765,10 +775,10 @@ class Install():  # pylint:disable=too-few-public-methods
             if key not in self._env.installed_packages:
                 self._env.conda_missing_packages.append(pkg)
                 continue
-            if len(pkg[0].split("==")) > 1:
-                if pkg[0].split("==")[1] != installed_conda_packages.get(key):
-                    self._env.conda_missing_packages.append(pkg)
-                    continue
+            if len(pkg[0].split("==")) > 1 and pkg[0].split("==")[
+                1
+            ] != installed_conda_packages.get(key):
+                self._env.conda_missing_packages.append(pkg)
         logger.debug(self._env.conda_missing_packages)
 
     @classmethod
@@ -896,7 +906,7 @@ class Install():  # pylint:disable=too-few-public-methods
             # conda-forge, but fail tensorflow itself so that it can be handled by pip.
             specs = Requirement.parse(package).specs
             for key, val in _TENSORFLOW_REQUIREMENTS.items():
-                req_specs = Requirement.parse("foobar" + key).specs
+                req_specs = Requirement.parse(f"foobar{key}").specs
                 if all(item in req_specs for item in specs):
                     cuda, cudnn = val
                     break

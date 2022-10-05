@@ -183,7 +183,7 @@ class GradientLoss():  # pylint:disable=too-few-public-methods
                               self.generalized_loss(self._diff_yy(y_true), self._diff_yy(y_pred)) +
                               self.generalized_loss(self._diff_xy(y_true), self._diff_xy(y_pred))
                               * 2.)
-        loss = loss / (tv_weight + tv2_weight)
+        loss /= tv_weight + tv2_weight
         # TODO simplify to use MSE instead
         return loss
 
@@ -345,8 +345,7 @@ class LaplacianPyramidLoss():  # pylint:disable=too-few-public-methods
                                 ([0, 0], [1, 1], [1, 1], [0, 0]),
                                 mode="REFLECT")
 
-        retval = K.conv2d(padded_inputs, gauss, strides=(1, 1), padding="valid")
-        return retval
+        return K.conv2d(padded_inputs, gauss, strides=(1, 1), padding="valid")
 
     def _get_laplacian_pyramid(self, inputs: plaidml.tile.Value) -> List[plaidml.tile.Value]:
         """ Obtain the Laplacian Pyramid.
@@ -395,8 +394,7 @@ class LaplacianPyramidLoss():  # pylint:disable=too-few-public-methods
 
         losses = K.stack([K.sum(K.abs(ppred - ptrue)) / K.cast(K.prod(K.shape(ptrue)), "float32")
                           for ptrue, ppred in zip(pyramid_true, pyramid_pred)])
-        loss = K.sum(losses * self._weights)
-        return loss
+        return K.sum(losses * self._weights)
 
 
 class LInfNorm():  # pylint:disable=too-few-public-methods
@@ -421,8 +419,7 @@ class LInfNorm():  # pylint:disable=too-few-public-methods
         """
         diff = K.abs(y_true - y_pred)
         max_loss = K.max(diff, axis=(1, 2), keepdims=True)
-        loss = K.mean(max_loss, axis=-1)
-        return loss
+        return K.mean(max_loss, axis=-1)
 
 
 class LogCosh():  # pylint:disable=too-few-public-methods

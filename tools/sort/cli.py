@@ -25,14 +25,17 @@ class SortArgs(FaceSwapArgs):
     @staticmethod
     def get_argument_list():
         """ Put the arguments in a list so that they are accessible from both argparse and gui """
-        argument_list = list()
-        argument_list.append(dict(
-            opts=('-i', '--input'),
-            action=DirFullPaths,
-            dest="input_dir",
-            group=_("data"),
-            help=_("Input directory of aligned faces."),
-            required=True))
+        argument_list = [
+            dict(
+                opts=('-i', '--input'),
+                action=DirFullPaths,
+                dest="input_dir",
+                group=_("data"),
+                help=_("Input directory of aligned faces."),
+                required=True,
+            )
+        ]
+
         argument_list.append(dict(
             opts=('-o', '--output'),
             action=DirFullPaths,
