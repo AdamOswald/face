@@ -13,6 +13,9 @@ branch_destroyer:
   # set other "protected" branches here
   protected_branches:
     - main
+    - staging
+    - r0.5_pre-training_refactor
+    - r2.1_pre-head-extract
 pull_requests:
   # The Setting to enable automaed merges
   automated_merge: true
