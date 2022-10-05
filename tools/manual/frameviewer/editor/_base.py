@@ -41,7 +41,7 @@ class Editor():
         self._globals = canvas._globals
         self._det_faces = detected_faces
 
-        self._current_color = dict()
+        self._current_color = {}
         self._actions = OrderedDict()
         self._controls = dict(header=control_text, controls=[])
         self._add_key_bindings(key_bindings)
@@ -51,7 +51,7 @@ class Editor():
         self._add_annotation_format_controls()
 
         self._mouse_location = None
-        self._drag_data = dict()
+        self._drag_data = {}
         self._drag_callback = None
         self.bind_mouse_motion()
         logger.debug("Initialized %s", self.__class__.__name__)
@@ -80,9 +80,8 @@ class Editor():
     def view_mode(self):
         """ ["frame", "face"]: The view mode for the currently selected editor. If the editor does
         not have a view mode that can be updated, then `"frame"` will be returned. """
-        tk_var = self._actions.get("magnify", dict()).get("tk_var", None)
-        retval = "frame" if tk_var is None or not tk_var.get() else "face"
-        return retval
+        tk_var = self._actions.get("magnify", {}).get("tk_var", None)
+        return "frame" if tk_var is None or not tk_var.get() else "face"
 
     @property
     def _zoomed_roi(self):
@@ -106,7 +105,7 @@ class Editor():
     @property
     def _control_vars(self):
         """ dict: The tk control panel variables for the currently selected editor. """
-        return self._canvas.control_tk_vars.get(self.__class__.__name__, dict())
+        return self._canvas.control_tk_vars.get(self.__class__.__name__, {})
 
     @property
     def controls(self):
@@ -135,12 +134,13 @@ class Editor():
         """ list: The detected face objects to be iterated. This will either be all faces in the
         frame (normal view) or the single zoomed in face (zoom mode). """
         if self._globals.frame_index == -1:
-            faces = []
-        else:
-            faces = self._det_faces.current_faces[self._globals.frame_index]
-            faces = ([faces[self._globals.face_index]]
-                     if self._globals.is_zoomed and faces else faces)
-        return faces
+            return []
+        faces = self._det_faces.current_faces[self._globals.frame_index]
+        return (
+            [faces[self._globals.face_index]]
+            if self._globals.is_zoomed and faces
+            else faces
+        )
 
     def _add_key_bindings(self, key_bindings):
         """ Add the editor specific key bindings for the currently viewed editor.
@@ -155,7 +155,7 @@ class Editor():
         for key, method in key_bindings.items():
             logger.debug("Binding key '%s' to method %s for editor '%s'",
                          key, method, self.__class__.__name__)
-            self._canvas.key_bindings.setdefault(key, dict())["bound_to"] = None
+            self._canvas.key_bindings.setdefault(key, {})["bound_to"] = None
             self._canvas.key_bindings[key][self.__class__.__name__] = method
 
     @staticmethod
@@ -233,18 +233,10 @@ class Editor():
         """
         object_color_keys = self._get_object_color_keys(key, object_type)
         tracking_id = "_".join((key, str(face_index)))
-        face_tag = "face_{}".format(face_index)
+        face_tag = f"face_{face_index}"
         face_objects = set(self._canvas.find_withtag(face_tag))
         annotation_objects = set(self._canvas.find_withtag(key))
-        existing_object = tuple(face_objects.intersection(annotation_objects))
-        if not existing_object:
-            item_id = self._add_new_object(key,
-                                           object_type,
-                                           face_index,
-                                           coordinates,
-                                           object_kwargs)
-            update_color = bool(object_color_keys)
-        else:
+        if existing_object := tuple(face_objects.intersection(annotation_objects)):
             item_id = existing_object[0]
             update_color = self._update_existing_object(
                 existing_object[0],
@@ -252,6 +244,13 @@ class Editor():
                 object_kwargs,
                 tracking_id,
                 object_color_keys)
+        else:
+            item_id = self._add_new_object(key,
+                                           object_type,
+                                           face_index,
+                                           coordinates,
+                                           object_kwargs)
+            update_color = bool(object_color_keys)
         if update_color:
             self._current_color[tracking_id] = object_kwargs[object_color_keys[0]]
         return item_id
@@ -310,9 +309,9 @@ class Editor():
                      "coordinates: %s, object_kwargs: %s)", key, object_type, face_index,
                      coordinates, object_kwargs)
         object_kwargs["tags"] = self._set_object_tags(face_index, key)
-        item_id = getattr(self._canvas,
-                          "create_{}".format(object_type))(*coordinates, **object_kwargs)
-        return item_id
+        return getattr(self._canvas, f"create_{object_type}")(
+            *coordinates, **object_kwargs
+        )
 
     def _set_object_tags(self, face_index, key):
         """ Create the tkinter object tags for the incoming object.
@@ -329,17 +328,20 @@ class Editor():
         list
             The generated tags for the current object
         """
-        tags = ["face_{}".format(face_index),
-                self.__class__.__name__,
-                "{}_face_{}".format(self.__class__.__name__, face_index),
-                key,
-                "{}_face_{}".format(key, face_index)]
+        tags = [
+            f"face_{face_index}",
+            self.__class__.__name__,
+            f"{self.__class__.__name__}_face_{face_index}",
+            key,
+            f"{key}_face_{face_index}",
+        ]
+
         if "_" in key:
             split_key = key.split("_")
             if split_key[-1].isdigit():
                 base_tag = "_".join(split_key[:-1])
                 tags.append(base_tag)
-                tags.append("{}_face_{}".format(base_tag, face_index))
+                tags.append(f"{base_tag}_face_{face_index}")
         return tags
 
     def _update_existing_object(self, item_id, coordinates, object_kwargs,
@@ -421,7 +423,7 @@ class Editor():
         self._canvas.bind("<ButtonRelease-1>", self._drag_stop)
         self._canvas.bind("<B1-Motion>", self._drag)
 
-    def _drag_start(self, event):  # pylint:disable=unused-argument
+    def _drag_start(self, event):    # pylint:disable=unused-argument
         """ The action to perform when the user starts clicking and dragging the mouse.
 
         The default does nothing except reset the attr:`drag_data` and attr:`drag_callback`.
@@ -433,7 +435,7 @@ class Editor():
             The tkinter mouse event. Unused but for default action, but available for editor
             specific actions
         """
-        self._drag_data = dict()
+        self._drag_data = {}
         self._drag_callback = None
 
     def _drag(self, event):
@@ -451,7 +453,7 @@ class Editor():
             return
         self._drag_callback(event)
 
-    def _drag_stop(self, event):  # pylint:disable=unused-argument
+    def _drag_stop(self, event):    # pylint:disable=unused-argument
         """ The action to perform when the user stops clicking and dragging the mouse.
 
         Default is to set :attr:`_drag_data` to `dict`. Override for Editor specific stop actions.
@@ -461,7 +463,7 @@ class Editor():
         event: :class:`tkinter.Event`
             The tkinter mouse event. Unused but required
         """
-        self._drag_data = dict()
+        self._drag_data = {}
 
     def _scale_to_display(self, points):
         """ Scale and offset the given points to the current display scale and offset values.
@@ -566,8 +568,9 @@ class Editor():
         group_key = option.group.replace(" ", "").lower()
         group_key = "none" if group_key == "_master" else group_key
         annotation_key = option.title.replace(" ", "")
-        self._canvas.control_tk_vars.setdefault(
-            editor_key, dict()).setdefault(group_key, dict())[annotation_key] = option.tk_var
+        self._canvas.control_tk_vars.setdefault(editor_key, {}).setdefault(
+            group_key, {}
+        )[annotation_key] = option.tk_var
 
     def _add_annotation_format_controls(self):
         """ Add the annotation display (color/size) controls to :attr:`_annotation_formats`.
@@ -594,7 +597,7 @@ class Editor():
                                             default=self._default_colors[annotation_key],
                                             helptext="Set the annotation color")
                 colors.set(self._default_colors[annotation_key])
-                self._annotation_formats.setdefault(annotation_key, dict())["color"] = colors
+                self._annotation_formats.setdefault(annotation_key, {})["color"] = colors
                 self._annotation_formats[annotation_key]["mask_opacity"] = opacity
 
         for editor in editors:

@@ -145,7 +145,7 @@ class FacesActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
                      self.__class__.__name__, parent)
         super().__init__(parent)
         self.pack(side=tk.LEFT, fill=tk.Y, padx=(2, 4), pady=2)
-        self._tk_vars = dict()
+        self._tk_vars = {}
         self._configure_styles()
         self._buttons = self._add_buttons()
         logger.debug("Initialized %s", self.__class__.__name__)
@@ -154,7 +154,7 @@ class FacesActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
     def key_bindings(self):
         """ dict: The mapping of key presses to optional annotations to display. Keyboard shortcuts
         utilize the function keys. """
-        return {"F{}".format(idx + 9): display for idx, display in enumerate(("mesh", "mask"))}
+        return {f"F{idx + 9}": display for idx, display in enumerate(("mesh", "mask"))}
 
     @property
     def _helptext(self):
@@ -163,7 +163,7 @@ class FacesActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
         retval = dict(mesh=_("Display the landmarks mesh"),
                       mask=_("Display the mask"))
         for item in retval:
-            retval[item] += " ({})".format(inverse_keybindings[item])
+            retval[item] += f" ({inverse_keybindings[item]})"
         return retval
 
     def _configure_styles(self):
@@ -184,7 +184,7 @@ class FacesActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
         """
         frame = ttk.Frame(self)
         frame.pack(side=tk.TOP, fill=tk.Y)
-        buttons = dict()
+        buttons = {}
         for display in self.key_bindings.values():
             var = tk.BooleanVar()
             var.set(False)
@@ -445,8 +445,7 @@ class FacesViewer(tk.Canvas):   # pylint:disable=too-many-ancestors
         scale = (1 - scale) + 1 if hls[1] < 120 else scale
         hls[1] = max(0., min(256., scale * hls[1]))
         rgb = np.clip(np.rint(colorsys.hls_to_rgb(*hls)).astype("uint8"), 0, 255)
-        retval = rgb_to_hex(rgb)
-        return retval
+        return rgb_to_hex(rgb)
 
     def _toggle_annotations(self, annotation):
         """ Toggle optional annotations on or off after the user depresses an optional button.
@@ -510,17 +509,16 @@ class Grid():
     @property
     def columns_rows(self):
         """ tuple: the (`columns`, `rows`) required to hold all display images. """
-        retval = tuple(reversed(self._grid.shape[1:])) if self._is_valid else (0, 0)
-        return retval
+        return tuple(reversed(self._grid.shape[1:])) if self._is_valid else (0, 0)
 
     @property
     def dimensions(self):
         """ tuple: The (`width`, `height`) required to hold all display images. """
-        if self._is_valid:
-            retval = tuple(dim * self._face_size for dim in reversed(self._grid.shape[1:]))
-        else:
-            retval = (0, 0)
-        return retval
+        return (
+            tuple(dim * self._face_size for dim in reversed(self._grid.shape[1:]))
+            if self._is_valid
+            else (0, 0)
+        )
 
     @property
     def _visible_row_indices(self):

@@ -135,7 +135,7 @@ def main(args):
                 os.path.join(save_folder, f'{name}_camera_matrix.txt'),
                 camera_matrix,
             )
-             
+
 
             np.savetxt(os.path.join(save_folder, f'{name}_pose.txt'), pose)
 

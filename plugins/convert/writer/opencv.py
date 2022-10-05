@@ -31,7 +31,7 @@ class Writer(Output):
     def _check_transparency_format(self) -> None:
         """ Make sure that the output format is correct if draw_transparent is selected """
         transparent = self.config["draw_transparent"]
-        if not transparent or (transparent and self.config["format"] == "png"):
+        if not transparent or self.config["format"] == "png":
             return
         logger.warning("Draw Transparent selected, but the requested format does not support "
                        "transparency. Changing output format to 'png'")

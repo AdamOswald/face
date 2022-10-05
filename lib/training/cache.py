@@ -89,8 +89,7 @@ def _check_reset(face_cache: "_Cache") -> bool:
         ``True`` if the given object should reset the cache, otherwise ``False``
     """
     check_cache = next((cache for cache in _FACE_CACHES.values() if cache != face_cache), None)
-    retval = False if check_cache is None else check_cache.check_reset()
-    return retval
+    return False if check_cache is None else check_cache.check_reset()
 
 
 class _Cache():
@@ -259,9 +258,10 @@ class _Cache():
                 self._prepare_masks(filename, detected_face)
                 self._cache[key] = detected_face
 
-            # Update the :attr:`cache_full` attribute
-            cache_full = not self._partially_loaded and len(self._cache) == self._image_count
-            if cache_full:
+            if (
+                cache_full := not self._partially_loaded
+                and len(self._cache) == self._image_count
+            ):
                 logger.verbose("Cache filled: '%s'", os.path.dirname(filenames[0]))  # type: ignore
                 self._cache_info["cache_full"] = cache_full
 
@@ -387,8 +387,10 @@ class _Cache():
             The detected face object that holds the masks
         """
         masks = [(self._get_face_mask(filename, detected_face))]
-        for area in get_args(Literal["eye", "mouth"]):
-            masks.append(self._get_localized_mask(filename, detected_face, area))
+        masks.extend(
+            self._get_localized_mask(filename, detected_face, area)
+            for area in get_args(Literal["eye", "mouth"])
+        )
 
         detected_face.store_training_masks(masks, delete_masks=True)
         logger.trace("Stored masks for filename: %s)", filename)  # type: ignore

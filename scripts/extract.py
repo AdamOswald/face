@@ -60,7 +60,7 @@ class Extract():  # pylint:disable=too-few-public-methods
         normalization = None if self._args.normalization == "none" else self._args.normalization
 
         maskers = ["components", "extended"]
-        maskers += self._args.masker if self._args.masker else []
+        maskers += self._args.masker or []
         self._extractor = Extractor(self._args.detector,
                                     self._args.aligner,
                                     maskers,

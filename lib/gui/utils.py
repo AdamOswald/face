@@ -255,8 +255,11 @@ class FileHandler():  # pylint:disable=too-few-public-methods
         dict:
             The default file extension for each file type
         """
-        defaults = {key: next(ext for ext in val[0][1].split(" ")).replace("*", "")
-                    for key, val in self._filetypes.items()}
+        defaults = {
+            key: next(iter(val[0][1].split(" "))).replace("*", "")
+            for key, val in self._filetypes.items()
+        }
+
         defaults["default"] = None
         defaults["video"] = ".mp4"
         defaults["image"] = ".png"
@@ -603,7 +606,7 @@ class Images():
         if not retval:
             logger.debug("No new images in output folder")
         else:
-            self._previewcache["modified"] = max([os.path.getmtime(img) for img in retval])
+            self._previewcache["modified"] = max(os.path.getmtime(img) for img in retval)
             logger.debug("Number new images: %s, Last Modified: %s",
                          len(retval), self._previewcache["modified"])
         return retval
@@ -847,7 +850,7 @@ class Images():
             # Hacky fix to force a reload if it happens to find corrupted
             # data, probably due to reading the image whilst it is partially
             # saved. If it continues to fail, then eventually raise.
-            for i in range(0, 1000):
+            for i in range(1000):
                 try:
                     displayimg = displayimg.resize(size, Image.ANTIALIAS)
                 except OSError:

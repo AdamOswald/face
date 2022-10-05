@@ -65,7 +65,7 @@ class Mask(Masker):
         landmarks[17:22] = top_l + ((top_l - bot_l) // 2)
         landmarks[22:27] = top_r + ((top_r - bot_r) // 2)
 
-        r_jaw = (landmarks[0:9], landmarks[17:18])
+        r_jaw = landmarks[:9], landmarks[17:18]
         l_jaw = (landmarks[8:17], landmarks[26:27])
         r_cheek = (landmarks[17:20], landmarks[8:9])
         l_cheek = (landmarks[24:27], landmarks[8:9])
@@ -79,5 +79,4 @@ class Mask(Masker):
                  landmarks[31:36],
                  landmarks[8:9])
         nose = (landmarks[27:31], landmarks[31:36])
-        parts = [r_jaw, l_jaw, r_cheek, l_cheek, nose_ridge, r_eye, l_eye, nose]
-        return parts
+        return [r_jaw, l_jaw, r_cheek, l_cheek, nose_ridge, r_eye, l_eye, nose]

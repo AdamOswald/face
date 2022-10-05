@@ -188,8 +188,7 @@ class DataGenerator():
             while True:
                 if do_shuffle:
                     shuffle(imgs)
-                for img in imgs:
-                    yield img
+                yield from imgs
 
         img_iter = _img_iter(self._images[:])
         while True:
@@ -218,10 +217,11 @@ class DataGenerator():
             Batch of :class:`~lib.align.DetectedFace` objects for the given filename including the
             aligned face objects for the model output size
         """
-        if not self._face_cache.cache_full:
-            raw_faces = self._face_cache.cache_metadata(filenames)
-        else:
-            raw_faces = read_image_batch(filenames)
+        raw_faces = (
+            read_image_batch(filenames)
+            if self._face_cache.cache_full
+            else self._face_cache.cache_metadata(filenames)
+        )
 
         detected_faces = self._face_cache.get_items(filenames)
         logger.trace("filenames: %s, raw_faces: '%s', detected_faces: %s",  # type: ignore
