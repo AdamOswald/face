@@ -377,9 +377,8 @@ class _GuiSession():  # pylint:disable=too-few-public-methods
             True if :attr:`filename` successfully set otherwise ``False``
         """
         logger.debug("Popping save as file handler. session_type: '%s'", session_type)
-        title = "Save {}As...".format(
-            f"{session_type.title()} " if session_type != "all" else ""
-        )
+        title = f'Save {f"{session_type.title()} " if session_type != "all" else ""}As...'
+
 
         cfgfile = self._file_handler(
             "save",
