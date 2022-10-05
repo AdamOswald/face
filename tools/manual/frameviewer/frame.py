@@ -42,7 +42,7 @@ class DisplayFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
 
         self._globals = tk_globals
         self._det_faces = detected_faces
-        self._optional_widgets = dict()
+        self._optional_widgets = {}
 
         self._actions_frame = ActionsFrame(self)
         main_frame = ttk.Frame(self)
@@ -89,14 +89,15 @@ class DisplayFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
     @property
     def _btn_action(self):
         """ dict: {`name`: `action`} Command lookup for navigation buttons """
-        actions = dict(play=self._navigation.handle_play_button,
-                       beginning=self._navigation.goto_first_frame,
-                       prev=self._navigation.decrement_frame,
-                       next=self._navigation.increment_frame,
-                       end=self._navigation.goto_last_frame,
-                       extract=self._det_faces.extract,
-                       save=self._det_faces.save)
-        return actions
+        return dict(
+            play=self._navigation.handle_play_button,
+            beginning=self._navigation.goto_first_frame,
+            prev=self._navigation.decrement_frame,
+            next=self._navigation.increment_frame,
+            end=self._navigation.goto_last_frame,
+            extract=self._det_faces.extract,
+            save=self._det_faces.save,
+        )
 
     @property
     def tk_selected_action(self):
@@ -149,7 +150,7 @@ class DisplayFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
                          textvariable=self._globals.tk_transport_index,
                          justify=tk.RIGHT)
         tbox.pack(padx=0, side=tk.LEFT)
-        lbl = ttk.Label(lbl_frame, text="/{}".format(max_frame))
+        lbl = ttk.Label(lbl_frame, text=f"/{max_frame}")
         lbl.pack(side=tk.RIGHT)
 
         cmd = partial(set_slider_rounding,
@@ -187,7 +188,7 @@ class DisplayFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
         frame = ttk.Frame(self._transport_frame)
         frame.pack(side=tk.BOTTOM, fill=tk.X)
         icons = get_images().icons
-        buttons = dict()
+        buttons = {}
         for action in ("play", "beginning", "prev", "next", "end", "save", "extract", "mode"):
             padx = (0, 6) if action in ("play", "prev", "mode") else (0, 0)
             side = tk.RIGHT if action in ("extract", "save", "mode") else tk.LEFT
@@ -366,7 +367,7 @@ class ActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
         self._buttons = self._add_buttons()
         self._static_buttons = self._add_static_buttons()
         self._selected_action = self._set_selected_action_tkvar()
-        self._optional_buttons = dict()  # Has to be set from parent after canvas is initialized
+        self._optional_buttons = {}
 
     @property
     def actions(self):
@@ -382,7 +383,7 @@ class ActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
     def key_bindings(self):
         """ dict: {`key`: `action`}. The mapping of key presses to actions. Keyboard shortcut is
         the first letter of each action. """
-        return {"F{}".format(idx + 1): action for idx, action in enumerate(self._actions)}
+        return {f"F{idx + 1}": action for idx, action in enumerate(self._actions)}
 
     @property
     def _helptext(self):
@@ -394,7 +395,7 @@ class ActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
                       Mask=_("Mask editor"),
                       Landmarks=_("Landmark point editor"))
         for item in retval:
-            retval[item] += " ({})".format(inverse_keybindings[item])
+            retval[item] += f" ({inverse_keybindings[item]})"
         return retval
 
     def _configure_styles(self):
@@ -415,7 +416,7 @@ class ActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
         """
         frame = ttk.Frame(self)
         frame.pack(side=tk.TOP, fill=tk.Y)
-        buttons = dict()
+        buttons = {}
         for action in self.key_bindings.values():
             if action == self._initial_action:
                 btn_style = "actions_selected.TButton"
@@ -472,7 +473,7 @@ class ActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
         frame.pack(side=tk.TOP, fill=tk.Y)
         sep = ttk.Frame(frame, height=2, relief=tk.RIDGE)
         sep.pack(fill=tk.X, pady=5, side=tk.TOP)
-        buttons = dict()
+        buttons = {}
         tk_frame_index = self._globals.tk_frame_index
         for action in ("copy_prev", "copy_next", "reload"):
             if action == "reload":
@@ -498,7 +499,7 @@ class ActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
         self._globals.tk_update.trace("w", self._disable_enable_reload_button)
         return buttons
 
-    def _disable_enable_copy_buttons(self, *args):  # pylint: disable=unused-argument
+    def _disable_enable_copy_buttons(self, *args):    # pylint: disable=unused-argument
         """ Disable or enable the static buttons """
         position = self._globals.frame_index
         face_count_per_index = self._det_faces.face_count_per_index
@@ -509,7 +510,7 @@ class ActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
         states = dict(prev=["!disabled"] if prev_exists else ["disabled"],
                       next=["!disabled"] if next_exists else ["disabled"])
         for direction in ("prev", "next"):
-            self._static_buttons["copy_{}".format(direction)].state(states[direction])
+            self._static_buttons[f"copy_{direction}"].state(states[direction])
 
     def _disable_enable_reload_button(self, *args):  # pylint: disable=unused-argument
         """ Disable or enable the static buttons """
@@ -549,12 +550,12 @@ class ActionsFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
 
                 helptext = action["helptext"]
                 hotkey = action["hotkey"]
-                helptext += "" if hotkey is None else " ({})".format(hotkey.upper())
+                helptext += "" if hotkey is None else f" ({hotkey.upper()})"
                 Tooltip(button, text=helptext)
-                self._optional_buttons.setdefault(
-                    name, dict())[button] = dict(hotkey=hotkey,
-                                                 group=group,
-                                                 tk_var=action["tk_var"])
+                self._optional_buttons.setdefault(name, {})[button] = dict(
+                    hotkey=hotkey, group=group, tk_var=action["tk_var"]
+                )
+
             self._optional_buttons[name]["frame"] = frame
         self._display_optional_buttons()
 
@@ -652,9 +653,10 @@ class FrameViewer(tk.Canvas):  # pylint:disable=too-many-ancestors
         self._actions = actions
         self._tk_action_var = tk_action_var
         self._image = BackgroundImage(self)
-        self._editor_globals = dict(control_tk_vars=dict(),
-                                    annotation_formats=dict(),
-                                    key_bindings=dict())
+        self._editor_globals = dict(
+            control_tk_vars={}, annotation_formats={}, key_bindings={}
+        )
+
         self._max_face_count = 0
         self._editors = self._get_editors()
         self._add_callbacks()
@@ -719,7 +721,7 @@ class FrameViewer(tk.Canvas):  # pylint:disable=too-many-ancestors
         dict
             The {`action`: :class:`Editor`} dictionary of editors for :attr:`_actions` name.
         """
-        editors = dict()
+        editors = {}
         for editor_name in self._actions + ("Mesh", ):
             editor = eval(editor_name)(self,  # pylint:disable=eval-used
                                        self._det_faces)
@@ -797,7 +799,7 @@ class FrameViewer(tk.Canvas):  # pylint:disable=too-many-ancestors
             self._max_face_count = current_face_count
             return
         for idx in range(current_face_count, self._max_face_count):
-            tag = "face_{}".format(idx)
+            tag = f"face_{idx}"
             if any(self.itemcget(item_id, "state") != "hidden"
                    for item_id in self.find_withtag(tag)):
                 logger.debug("Hiding face tag '%s'", tag)

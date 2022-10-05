@@ -123,10 +123,7 @@ class Pix2PixModel(BaseModel):
         # self.visual_names = ['real_A', 'fake_B', 'real_B']
         self.visual_names = ['cloth_decoded', 'fakes_scaled', 'textures_unnormalized']
         # specify the models you want to save to the disk. The training/test scripts will call <BaseModel.save_networks> and <BaseModel.load_networks>
-        if self.is_train:
-            self.model_names = ['G', 'D']
-        else:  # during test time, only load G
-            self.model_names = ['G']
+        self.model_names = ['G', 'D'] if self.is_train else ['G']
         # define networks (both generator and discriminator)
         self.net_G = define_G(opt.cloth_channels + 36, opt.texture_channels, 64, "unet_128", opt.norm, True, opt.init_type, opt.init_gain).to(self.device)
 
@@ -135,7 +132,7 @@ class Pix2PixModel(BaseModel):
 
         if self.is_train:
             # define loss functions
-            use_smooth = True if opt.gan_label_mode == "smooth" else False
+            use_smooth = opt.gan_label_mode == "smooth"
             self.criterionGAN = GANLoss(opt.gan_mode, smooth_labels=use_smooth).to(self.device)
             self.criterionL1 = torch.nn.L1Loss()
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.

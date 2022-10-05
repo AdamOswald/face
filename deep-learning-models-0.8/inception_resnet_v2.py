@@ -92,10 +92,10 @@ def conv2d_bn(x,
                name=name)(x)
     if not use_bias:
         bn_axis = 1 if K.image_data_format() == 'channels_first' else 3
-        bn_name = None if name is None else name + '_bn'
+        bn_name = None if name is None else f'{name}_bn'
         x = BatchNormalization(axis=bn_axis, scale=False, name=bn_name)(x)
     if activation is not None:
-        ac_name = None if name is None else name + '_ac'
+        ac_name = None if name is None else f'{name}_ac'
         x = Activation(activation, name=ac_name)(x)
     return x
 
@@ -160,22 +160,25 @@ def inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
                          'Expects "block35", "block17" or "block8", '
                          'but got: ' + str(block_type))
 
-    block_name = block_type + '_' + str(block_idx)
+    block_name = f'{block_type}_{str(block_idx)}'
     channel_axis = 1 if K.image_data_format() == 'channels_first' else 3
-    mixed = Concatenate(axis=channel_axis, name=block_name + '_mixed')(branches)
-    up = conv2d_bn(mixed,
-                   K.int_shape(x)[channel_axis],
-                   1,
-                   activation=None,
-                   use_bias=True,
-                   name=block_name + '_conv')
+    mixed = Concatenate(axis=channel_axis, name=f'{block_name}_mixed')(branches)
+    up = conv2d_bn(
+        mixed,
+        K.int_shape(x)[channel_axis],
+        1,
+        activation=None,
+        use_bias=True,
+        name=f'{block_name}_conv',
+    )
+
 
     x = Lambda(lambda inputs, scale: inputs[0] + inputs[1] * scale,
                output_shape=K.int_shape(x)[1:],
                arguments={'scale': scale},
                name=block_name)([x, up])
     if activation is not None:
-        x = Activation(activation, name=block_name + '_ac')(x)
+        x = Activation(activation, name=f'{block_name}_ac')(x)
     return x
 
 
@@ -237,7 +240,10 @@ def InceptionResNetV2(include_top=True,
         RuntimeError: If attempting to run this model with an unsupported backend.
     """
     if K.backend() in {'cntk'}:
-        raise RuntimeError(K.backend() + ' backend is currently unsupported for this model.')
+        raise RuntimeError(
+            f'{K.backend()} backend is currently unsupported for this model.'
+        )
+
 
     if weights not in {'imagenet', None}:
         raise ValueError('The `weights` argument should be either '
@@ -260,10 +266,11 @@ def InceptionResNetV2(include_top=True,
     if input_tensor is None:
         img_input = Input(shape=input_shape)
     else:
-        if not K.is_keras_tensor(input_tensor):
-            img_input = Input(tensor=input_tensor, shape=input_shape)
-        else:
-            img_input = input_tensor
+        img_input = (
+            input_tensor
+            if K.is_keras_tensor(input_tensor)
+            else Input(tensor=input_tensor, shape=input_shape)
+        )
 
     # Stem block: 35 x 35 x 192
     x = conv2d_bn(img_input, 32, 3, strides=2, padding='valid')
@@ -341,34 +348,31 @@ def InceptionResNetV2(include_top=True,
         # Classification block
         x = GlobalAveragePooling2D(name='avg_pool')(x)
         x = Dense(classes, activation='softmax', name='predictions')(x)
-    else:
-        if pooling == 'avg':
-            x = GlobalAveragePooling2D()(x)
-        elif pooling == 'max':
-            x = GlobalMaxPooling2D()(x)
+    elif pooling == 'avg':
+        x = GlobalAveragePooling2D()(x)
+    elif pooling == 'max':
+        x = GlobalMaxPooling2D()(x)
 
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`
-    if input_tensor is not None:
-        inputs = get_source_inputs(input_tensor)
-    else:
-        inputs = img_input
-
+    inputs = img_input if input_tensor is None else get_source_inputs(input_tensor)
     # Create model
     model = Model(inputs, x, name='inception_resnet_v2')
 
     # Load weights
     if weights == 'imagenet':
-        if K.image_data_format() == 'channels_first':
-            if K.backend() == 'tensorflow':
-                warnings.warn('You are using the TensorFlow backend, yet you '
-                              'are using the Theano '
-                              'image data format convention '
-                              '(`image_data_format="channels_first"`). '
-                              'For best performance, set '
-                              '`image_data_format="channels_last"` in '
-                              'your Keras config '
-                              'at ~/.keras/keras.json.')
+        if (
+            K.image_data_format() == 'channels_first'
+            and K.backend() == 'tensorflow'
+        ):
+            warnings.warn('You are using the TensorFlow backend, yet you '
+                          'are using the Theano '
+                          'image data format convention '
+                          '(`image_data_format="channels_first"`). '
+                          'For best performance, set '
+                          '`image_data_format="channels_last"` in '
+                          'your Keras config '
+                          'at ~/.keras/keras.json.')
         if include_top:
             weights_filename = 'inception_resnet_v2_weights_tf_dim_ordering_tf_kernels.h5'
             weights_path = get_file(weights_filename,

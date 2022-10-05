@@ -23,16 +23,21 @@ class PreviewArgs(FaceSwapArgs):
 
     def get_argument_list(self):
 
-        argument_list = list()
-        argument_list.append(dict(
-            opts=("-i", "--input-dir"),
-            action=DirOrFileFullPaths,
-            filetypes="video",
-            dest="input_dir",
-            group=_("data"),
-            required=True,
-            help=_("Input directory or video. Either a directory containing the image files you "
-                   "wish to process or path to a video file.")))
+        argument_list = [
+            dict(
+                opts=("-i", "--input-dir"),
+                action=DirOrFileFullPaths,
+                filetypes="video",
+                dest="input_dir",
+                group=_("data"),
+                required=True,
+                help=_(
+                    "Input directory or video. Either a directory containing the image files you "
+                    "wish to process or path to a video file."
+                ),
+            )
+        ]
+
         argument_list.append(dict(
             opts=("-al", "--alignments"),
             action=FileFullPaths,

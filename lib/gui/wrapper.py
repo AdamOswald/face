@@ -32,7 +32,7 @@ class ProcessWrapper():
         self.pathscript = os.path.realpath(os.path.dirname(sys.argv[0]))
         self.command = None
         self.statusbar = get_config().statusbar
-        self._training_session_location = dict()
+        self._training_session_location = {}
         self.task = FaceswapControl(self)
         logger.debug("Initialized %s", self.__class__.__name__)
 
@@ -76,7 +76,7 @@ class ProcessWrapper():
             self.tk_vars["istraining"].set(True)
         print("Loading...")
 
-        self.statusbar.message.set("Executing - {}.py".format(self.command))
+        self.statusbar.message.set(f"Executing - {self.command}.py")
         mode = "indeterminate" if self.command in ("effmpeg", "train") else "determinate"
         self.statusbar.start(mode)
 
@@ -93,8 +93,8 @@ class ProcessWrapper():
         """
         logger.debug("Build cli arguments: (category: %s, command: %s, generate: %s)",
                      category, command, generate)
-        command = self.command if not command else command
-        script = "{}.{}".format(category, "py")
+        command = command or self.command
+        script = f"{category}.py"
         pathexecscript = os.path.join(self.pathscript, script)
 
         args = [sys.executable] if generate else [sys.executable, "-u"]
@@ -110,9 +110,15 @@ class ProcessWrapper():
             args.append("-gui")  # Indicate to Faceswap that we are running the GUI
         if generate:
             # Delimit args with spaces
-            args = ['"{}"'.format(arg) if " " in arg and not arg.startswith(("[", "("))
-                    and not arg.endswith(("]", ")")) else arg
-                    for arg in args]
+            args = [
+                f'"{arg}"'
+                if " " in arg
+                and not arg.startswith(("[", "("))
+                and not arg.endswith(("]", ")"))
+                else arg
+                for arg in args
+            ]
+
         logger.debug("Built cli arguments: (%s)", args)
         return args
 
@@ -278,12 +284,14 @@ class FaceswapControl():
             return False
 
         loss = self.consoleregex["loss"].findall(string)
-        if len(loss) != 2 or not all(len(itm) == 3 for itm in loss):
+        if len(loss) != 2 or any(len(itm) != 3 for itm in loss):
             logger.trace("Not loss message. Returning False")
             return False
 
-        message = "Total Iterations: {} | ".format(int(loss[0][0]))
-        message += "  ".join(["{}: {}".format(itm[1], itm[2]) for itm in loss])
+        message = f"Total Iterations: {int(loss[0][0])} | " + "  ".join(
+            [f"{itm[1]}: {itm[2]}" for itm in loss]
+        )
+
         if not message:
             logger.trace("Error creating loss message. Returning False")
             return False
@@ -298,9 +306,8 @@ class FaceswapControl():
         self.train_stats["iterations"] = iterations
 
         elapsed = self.calc_elapsed()
-        message = "Elapsed: {} | Session Iterations: {}  {}".format(
-            elapsed,
-            self.train_stats["iterations"], message)
+        message = f'Elapsed: {elapsed} | Session Iterations: {self.train_stats["iterations"]}  {message}'
+
         self.statusbar.progress_update(message, 0, False)
         logger.trace("Succesfully captured loss: %s", message)
         return True
@@ -319,7 +326,7 @@ class FaceswapControl():
             hrs = "00"
             mins = "00"
             secs = "00"
-        return "{}:{}:{}".format(hrs, mins, secs)
+        return f"{hrs}:{mins}:{secs}"
 
     def capture_tqdm(self, string):
         """ Capture tqdm output for progress bar """
@@ -332,14 +339,11 @@ class FaceswapControl():
             logger.trace("tqdm initializing. Skipping")
             return True
         description = tqdm["dsc"].strip()
-        description = description if description == "" else "{}  |  ".format(description[:-1])
-        processtime = "Elapsed: {}  Remaining: {}".format(tqdm["tme"].split("<")[0],
-                                                          tqdm["tme"].split("<")[1])
-        message = "{}{}  |  {}  |  {}  |  {}".format(description,
-                                                     processtime,
-                                                     tqdm["rte"],
-                                                     tqdm["itm"],
-                                                     tqdm["pct"])
+        description = description if description == "" else f"{description[:-1]}  |  "
+        processtime = f'Elapsed: {tqdm["tme"].split("<")[0]}  Remaining: {tqdm["tme"].split("<")[1]}'
+
+        message = f'{description}{processtime}  |  {tqdm["rte"]}  |  {tqdm["itm"]}  |  {tqdm["pct"]}'
+
 
         position = tqdm["pct"].replace("%", "")
         position = int(position) if position.isdigit() else 0
@@ -356,9 +360,7 @@ class FaceswapControl():
             logger.trace("Not ffmpeg message. Returning False")
             return False
 
-        message = ""
-        for item in ffmpeg:
-            message += "{}: {}  ".format(item[0], item[1])
+        message = "".join(f"{item[0]}: {item[1]}  " for item in ffmpeg)
         if not message:
             logger.trace("Error creating ffmpeg message. Returning False")
             return False
@@ -448,7 +450,7 @@ class FaceswapControl():
             print("Killed")
         else:
             for child in alive:
-                msg = "Process {} survived SIGKILL. Giving up".format(child)
+                msg = f"Process {child} survived SIGKILL. Giving up"
                 logger.debug(msg)
                 print(msg)
 
@@ -460,12 +462,12 @@ class FaceswapControl():
         if returncode in (0, 3221225786):
             status = "Ready"
         elif returncode == -15:
-            status = "Terminated - {}.py".format(self.command)
+            status = f"Terminated - {self.command}.py"
         elif returncode == -9:
-            status = "Killed - {}.py".format(self.command)
+            status = f"Killed - {self.command}.py"
         elif returncode == -6:
-            status = "Aborted - {}.py".format(self.command)
+            status = f"Aborted - {self.command}.py"
         else:
-            status = "Failed - {}.py. Return Code: {}".format(self.command, returncode)
+            status = f"Failed - {self.command}.py. Return Code: {returncode}"
         logger.debug("Set final status: %s", status)
         return status

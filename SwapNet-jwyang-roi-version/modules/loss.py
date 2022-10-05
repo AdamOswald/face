@@ -53,13 +53,12 @@ class GANLoss(nn.Module):
         self.gan_mode = gan_mode
         if gan_mode == "lsgan":
             self.loss = nn.MSELoss()
-        # according to DRAGAN GitHub, dragan also uses BCE loss: https://github.com/kodalinaveen3/DRAGAN/blob/master/DRAGAN.ipynb
         elif gan_mode in ["vanilla", "dragan", "dragan-gp", "dragan-lp"]:
             self.loss = nn.BCEWithLogitsLoss()
         elif "wgan" in gan_mode:
             self.loss = None
         else:
-            raise NotImplementedError("gan mode %s not implemented" % gan_mode)
+            raise NotImplementedError(f"gan mode {gan_mode} not implemented")
 
     @staticmethod
     def rand_between(low, high, normal=False):
@@ -94,15 +93,13 @@ class GANLoss(nn.Module):
                 )
             else:
                 target_tensor = self.real_label
+        elif len(self.fake_label) == 2:
+            low, high = self.real_label
+            target_tensor = GANLoss.rand_between(low, high).to(
+                self.fake_label.device
+            )
         else:
-            # smooth labels
-            if len(self.fake_label) == 2:
-                low, high = self.real_label
-                target_tensor = GANLoss.rand_between(low, high).to(
-                    self.fake_label.device
-                )
-            else:
-                target_tensor = self.fake_label
+            target_tensor = self.fake_label
         return target_tensor.expand_as(prediction)
 
     def __call__(self, prediction, target_is_real):
@@ -119,10 +116,7 @@ class GANLoss(nn.Module):
             target_tensor = self.get_target_tensor(prediction, target_is_real)
             loss = self.loss(prediction, target_tensor)
         elif "wgan" in self.gan_mode:
-            if target_is_real:
-                loss = -prediction.mean()
-            else:
-                loss = prediction.mean()
+            loss = -prediction.mean() if target_is_real else prediction.mean()
         else:
             raise ValueError(f"{self.gan_mode} not recognized")
         return loss
@@ -208,10 +202,7 @@ class FeatureLoss(ABC, nn.Module):
         :param inputs:
         :return:
         """
-        outs = []
-        for a in inputs:
-            outs.append(nn.functional.interpolate(a, scale_factor=self.scale))
-
+        outs = [nn.functional.interpolate(a, scale_factor=self.scale) for a in inputs]
         return tuple(outs)
 
 
@@ -225,8 +216,7 @@ class L1FeatureLoss(FeatureLoss):
         generated_feat = self.feature_extractor(generated.detach())
         actual_feat = self.feature_extractor(actual.detach())
 
-        loss = self.loss_fn(generated_feat, actual_feat)
-        return loss
+        return self.loss_fn(generated_feat, actual_feat)
 
 
 class MultiLayerFeatureLoss(FeatureLoss):
@@ -254,7 +244,7 @@ class MultiLayerFeatureLoss(FeatureLoss):
 
         start = len(self.features) - num_layers
         end = len(self.features)
-        self.layers_to_keep = {i for i in range(start, end)}
+        self.layers_to_keep = set(range(start, end))
 
     def extract_intermediate_layers(self, x):
         """
@@ -274,9 +264,7 @@ class MultiLayerFeatureLoss(FeatureLoss):
         generated, actual = self.downsize(generated, actual)
         generated_feat_list = self.extract_intermediate_layers(generated)
         actual_feat_list = self.extract_intermediate_layers(actual)
-        total_loss = 0
-
-        for i, w in enumerate(self.layer_weights):
-            total_loss += w * self.loss_fn(generated_feat_list[i], actual_feat_list[i])
-
-        return total_loss
+        return sum(
+            w * self.loss_fn(generated_feat_list[i], actual_feat_list[i])
+            for i, w in enumerate(self.layer_weights)
+        )

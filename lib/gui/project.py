@@ -82,9 +82,7 @@ class _GuiSession():  # pylint:disable=too-few-public-methods
     @property
     def _stored_tab_name(self):
         """str: The tab_name stored in :attr:`_options` or ``None`` if it does not exist """
-        if self._options is None:
-            return None
-        return self._options.get("tab_name", None)
+        return None if self._options is None else self._options.get("tab_name", None)
 
     @property
     def _selected_to_choices(self):
@@ -144,7 +142,7 @@ class _GuiSession():  # pylint:disable=too-few-public-methods
         bool: `True` if filename has been successfully set otherwise ``False``
         """
         logger.debug("filename: '%s', sess_type: '%s'", filename, sess_type)
-        handler = "config_{}".format(sess_type)
+        handler = f"config_{sess_type}"
 
         if filename is None:
             logger.debug("Popping file handler")
@@ -156,7 +154,7 @@ class _GuiSession():  # pylint:disable=too-few-public-methods
             cfgfile.close()
 
         if not os.path.isfile(filename):
-            msg = "File does not exist: '{}'".format(filename)
+            msg = f"File does not exist: '{filename}'"
             logger.error(msg)
             return False
         ext = os.path.splitext(filename)[1]
@@ -342,11 +340,10 @@ class _GuiSession():  # pylint:disable=too-few-public-methods
             logger.debug("Loading config")
             self._options = self._serializer.load(self._filename)
             self._check_valid_choices()
-            retval = True
+            return True
         else:
             logger.debug("File doesn't exist. Aborting")
-            retval = False
-        return retval
+            return False
 
     def _check_valid_choices(self):
         """ Check whether the loaded file has any selected combo/radio/multi-option values that are
@@ -360,7 +357,7 @@ class _GuiSession():  # pylint:disable=too-few-public-methods
                     val = " ".join([v for v in data["value"].split() if v in data["choices"]])
                 else:
                     val = ""
-                val = self._default_options[command][option] if not val else val
+                val = val or self._default_options[command][option]
                 logger.debug("Updating invalid value to default: (command: '%s', option: '%s', "
                              "original value: '%s', new value: '%s')", command, option,
                              self._options[command][option], val)
@@ -380,12 +377,17 @@ class _GuiSession():  # pylint:disable=too-few-public-methods
             True if :attr:`filename` successfully set otherwise ``False``
         """
         logger.debug("Popping save as file handler. session_type: '%s'", session_type)
-        title = "Save {}As...".format("{} ".format(session_type.title())
-                                      if session_type != "all" else "")
-        cfgfile = self._file_handler("save",
-                                     "config_{}".format(session_type),
-                                     title=title,
-                                     initial_folder=self._dirname).return_file
+        title = "Save {}As...".format(
+            f"{session_type.title()} " if session_type != "all" else ""
+        )
+
+        cfgfile = self._file_handler(
+            "save",
+            f"config_{session_type}",
+            title=title,
+            initial_folder=self._dirname,
+        ).return_file
+
         if not cfgfile:
             logger.debug("No filename provided. session_type: '%s'", session_type)
             return False
@@ -432,14 +434,16 @@ class Tasks(_GuiSession):
     """
     def __init__(self, config, file_handler):
         super().__init__(config, file_handler)
-        self._tasks = dict()
+        self._tasks = {}
 
     @property
     def _is_project(self):
         """ str: ``True`` if all tasks are from an overarching session project else ``False``."""
-        retval = False if not self._tasks else all(v.get("is_project", False)
-                                                   for v in self._tasks.values())
-        return retval
+        return (
+            all(v.get("is_project", False) for v in self._tasks.values())
+            if self._tasks
+            else False
+        )
 
     @property
     def _project_filename(self):
@@ -539,7 +543,7 @@ class Tasks(_GuiSession):
             logger.debug("Not a .fsw file: '%s'", filename)
             return filename
 
-        new_filename = "{}.fst".format(fname)
+        new_filename = f"{fname}.fst"
         logger.debug("Renaming '%s' to '%s'", filename, new_filename)
         os.rename(filename, new_filename)
         self._del_from_recent(filename, save=True)
@@ -612,7 +616,7 @@ class Tasks(_GuiSession):
         called by :class:`Project` when a project has been loaded which is in fact a task.
         """
         logger.debug("Clearing stored tasks")
-        self._tasks = dict()
+        self._tasks = {}
 
     def add_project_task(self, filename, command, options):
         """ Add an individual task from a loaded :class:`Project` to the internal :attr:`_tasks`
@@ -684,7 +688,7 @@ class Project(_GuiSession):
     @property
     def _project_modified(self):
         """bool: ``True`` if the project has been modified otherwise ``False``. """
-        return any([var.get() for var in self._modified_vars.values()])
+        return any(var.get() for var in self._modified_vars.values())
 
     @property
     def _tasks(self):
@@ -786,8 +790,7 @@ class Project(_GuiSession):
     def _update_tasks(self):
         """ Add the tasks from the loaded project to the :class:`Tasks` class. """
         for key, val in self._cli_options.items():
-            opts = {key: val}
-            opts["tab_name"] = key
+            opts = {key: val, "tab_name": key}
             self._tasks.add_project_task(self._filename, key, opts)
 
     def reload(self, *args):  # pylint:disable=unused-argument

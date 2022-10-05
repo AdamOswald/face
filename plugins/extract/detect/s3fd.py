@@ -102,8 +102,7 @@ class L2Norm(keras.layers.Layer):
             The output from the L2 Normalization Layer
         """
         norm = K.sqrt(K.sum(K.pow(inputs, 2), axis=-1, keepdims=True)) + 1e-10
-        var_x = inputs / norm * self.w
-        return var_x
+        return inputs / norm * self.w
 
     def get_config(self):
         """ Returns the config of the layer.
@@ -184,7 +183,7 @@ class SliceO2K(keras.layers.Layer):
             input_shape[a_x] = (min(size, end) - start) // steps
         return tuple(input_shape)
 
-    def call(self, inputs, **kwargs):  # pylint:disable=unused-argument
+    def call(self, inputs, **kwargs):    # pylint:disable=unused-argument
         """This is where the layer's logic lives.
 
         Parameters
@@ -198,11 +197,10 @@ class SliceO2K(keras.layers.Layer):
         A tensor or list/tuple of tensors.
             The layer output
         """
-        ax_map = dict((x[0], slice(*x[1:])) for x in self._get_slices(K.ndim(inputs)))
+        ax_map = {x[0]: slice(*x[1:]) for x in self._get_slices(K.ndim(inputs))}
         shape = K.int_shape(inputs)
-        slices = [(ax_map[a] if a in ax_map else slice(None)) for a in range(len(shape))]
-        retval = inputs[tuple(slices)]
-        return retval
+        slices = [ax_map.get(a, slice(None)) for a in range(len(shape))]
+        return inputs[tuple(slices)]
 
     def get_config(self):
         """ Returns the config of the layer.
@@ -424,8 +422,7 @@ class S3fd(KSession):
                     box = self.decode(loc, priors)
                     x_1, y_1, x_2, y_2 = box[0] * 1.0
                     retval.append([x_1, y_1, x_2, y_2, score])
-        return_numpy = np.array(retval) if len(retval) != 0 else np.zeros((1, 5))
-        return return_numpy
+        return np.array(retval) if retval else np.zeros((1, 5))
 
     @staticmethod
     def softmax(inp, axis):

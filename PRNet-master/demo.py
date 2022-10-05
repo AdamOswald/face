@@ -53,14 +53,13 @@ def main(args):
                 image = rescale(image, 1000./max_size)
                 image = (image*255).astype(np.uint8)
             pos = prn.process(image) # use dlib to detect face
+        elif image.shape[0] == image.shape[1]:
+            image = resize(image, (256,256))
+            pos = prn.net_forward(image/255.) # input image has been cropped to 256x256
         else:
-            if image.shape[0] == image.shape[1]:
-                image = resize(image, (256,256))
-                pos = prn.net_forward(image/255.) # input image has been cropped to 256x256
-            else:
-                box = np.array([0, image.shape[1]-1, 0, image.shape[0]-1]) # cropped with bounding box
-                pos = prn.process(image, box)
-        
+            box = np.array([0, image.shape[1]-1, 0, image.shape[0]-1]) # cropped with bounding box
+            pos = prn.process(image, box)
+
         image = image/255.
         if pos is None:
             continue
@@ -68,14 +67,11 @@ def main(args):
         if args.is3d or args.isMat or args.isPose or args.isShow:
             # 3D vertices
             vertices = prn.get_vertices(pos)
-            if args.isFront:
-                save_vertices = frontalize(vertices)
-            else:
-                save_vertices = vertices.copy()
+            save_vertices = frontalize(vertices) if args.isFront else vertices.copy()
             save_vertices[:,1] = h - 1 - save_vertices[:,1]
 
         if args.isImage:
-            imsave(os.path.join(save_folder, name + '.jpg'), image)
+            imsave(os.path.join(save_folder, f'{name}.jpg'), image)
 
         if args.is3d:
             # corresponding colors
@@ -92,31 +88,56 @@ def main(args):
                     uv_mask = get_uv_mask(vertices_vis, prn.triangles, prn.uv_coords, h, w, prn.resolution_op)
                     uv_mask = resize(uv_mask, (args.texture_size, args.texture_size), preserve_range = True)
                     texture = texture*uv_mask[:,:,np.newaxis]
-                write_obj_with_texture(os.path.join(save_folder, name + '.obj'), save_vertices, prn.triangles, texture, prn.uv_coords/prn.resolution_op)#save 3d face with texture(can open with meshlab)
+                write_obj_with_texture(
+                    os.path.join(save_folder, f'{name}.obj'),
+                    save_vertices,
+                    prn.triangles,
+                    texture,
+                    prn.uv_coords / prn.resolution_op,
+                )
+
             else:
-                write_obj_with_colors(os.path.join(save_folder, name + '.obj'), save_vertices, prn.triangles, colors) #save 3d face(can open with meshlab)
+                write_obj_with_colors(
+                    os.path.join(save_folder, f'{name}.obj'),
+                    save_vertices,
+                    prn.triangles,
+                    colors,
+                )
+
 
         if args.isDepth:
             depth_image = get_depth_image(vertices, prn.triangles, h, w, True)
             depth = get_depth_image(vertices, prn.triangles, h, w)
-            imsave(os.path.join(save_folder, name + '_depth.jpg'), depth_image)
-            sio.savemat(os.path.join(save_folder, name + '_depth.mat'), {'depth':depth})
+            imsave(os.path.join(save_folder, f'{name}_depth.jpg'), depth_image)
+            sio.savemat(os.path.join(save_folder, f'{name}_depth.mat'), {'depth':depth})
 
         if args.isMat:
-            sio.savemat(os.path.join(save_folder, name + '_mesh.mat'), {'vertices': vertices, 'colors': colors, 'triangles': prn.triangles})
+            sio.savemat(
+                os.path.join(save_folder, f'{name}_mesh.mat'),
+                {
+                    'vertices': vertices,
+                    'colors': colors,
+                    'triangles': prn.triangles,
+                },
+            )
+
 
         if args.isKpt or args.isShow:
             # get landmarks
             kpt = prn.get_landmarks(pos)
-            np.savetxt(os.path.join(save_folder, name + '_kpt.txt'), kpt)
+            np.savetxt(os.path.join(save_folder, f'{name}_kpt.txt'), kpt)
 
         if args.isPose or args.isShow:
             # estimate pose
             camera_matrix, pose = estimate_pose(vertices)
-            np.savetxt(os.path.join(save_folder, name + '_pose.txt'), pose) 
-            np.savetxt(os.path.join(save_folder, name + '_camera_matrix.txt'), camera_matrix) 
+            np.savetxt(os.path.join(save_folder, f'{name}_pose.txt'), pose)
+            np.savetxt(
+                os.path.join(save_folder, f'{name}_camera_matrix.txt'),
+                camera_matrix,
+            )
 
-            np.savetxt(os.path.join(save_folder, name + '_pose.txt'), pose)
+
+            np.savetxt(os.path.join(save_folder, f'{name}_pose.txt'), pose)
 
         if args.isShow:
             # ---------- Plot

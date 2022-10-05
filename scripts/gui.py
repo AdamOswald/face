@@ -26,7 +26,7 @@ class FaceswapGui(tk.Tk):
         self._config.set_geometry(1200, 640, self._config.user_config_dict["fullscreen"])
 
         self.wrapper = ProcessWrapper()
-        self.objects = dict()
+        self.objects = {}
 
         get_images().delete_preview()
         preview_trigger().clear(trigger_type=None)

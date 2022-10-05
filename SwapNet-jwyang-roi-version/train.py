@@ -18,6 +18,7 @@ Example:
     Train the texture model:
         python train.py --name texture_stage --model texture --dataroot data/deep_fashion
 """
+
 from tqdm import tqdm
 import time
 from options.train_options import TrainOptions
@@ -98,9 +99,7 @@ if __name__ == "__main__":
                     print(
                         f"saving the latest model (epoch {epoch:d}, total_iters {total_iters:d}) "
                     )
-                    save_prefix = (
-                        "iter_%d" % total_iters if opt.save_by_iter else f"latest"
-                    )
+                    save_prefix = "iter_%d" % total_iters if opt.save_by_iter else "latest"
                     model.save_checkpoint(save_prefix)
 
                 iter_data_time = time.time()

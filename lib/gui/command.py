@@ -22,7 +22,7 @@ class CommandNotebook(ttk.Notebook):  # pylint:disable=too-many-ancestors
 
     def __init__(self, parent):
         logger.debug("Initializing %s: (parent: %s)", self.__class__.__name__, parent)
-        self.actionbtns = dict()
+        self.actionbtns = {}
         super().__init__(parent)
         parent.add(self)
 
@@ -36,14 +36,18 @@ class CommandNotebook(ttk.Notebook):  # pylint:disable=too-many-ancestors
     @property
     def tab_names(self):
         """ dict: Command tab titles with their IDs """
-        return {self.tab(tab_id, "text").lower(): tab_id
-                for tab_id in range(0, self.index("end"))}
+        return {
+            self.tab(tab_id, "text").lower(): tab_id
+            for tab_id in range(self.index("end"))
+        }
 
     @property
     def tools_tab_names(self):
         """ dict: Tools tab titles with their IDs """
-        return {self.tools_notebook.tab(tab_id, "text").lower(): tab_id
-                for tab_id in range(0, self.tools_notebook.index("end"))}
+        return {
+            self.tools_notebook.tab(tab_id, "text").lower(): tab_id
+            for tab_id in range(self.tools_notebook.index("end"))
+        }
 
     def set_running_task_trace(self):
         """ Set trigger action for the running task
@@ -78,9 +82,9 @@ class CommandNotebook(ttk.Notebook):  # pylint:disable=too-many-ancestors
                 img = get_images().icons["stop"]
                 hlp = "Exit the running process"
             else:
-                ttl = " {}".format(cmd.title())
+                ttl = f" {cmd.title()}"
                 img = get_images().icons["start"]
-                hlp = "Run the {} script".format(cmd.title())
+                hlp = f"Run the {cmd.title()} script"
             logger.debug("Updated Action Button: '%s'", ttl)
             btnact.config(text=ttl, image=img)
             Tooltip(btnact, text=hlp, wrap_length=200)
@@ -88,7 +92,7 @@ class CommandNotebook(ttk.Notebook):  # pylint:disable=too-many-ancestors
     def _set_modified_vars(self):
         """ Set the tkinter variable for each tab to indicate whether contents
         have been modified """
-        tkvars = dict()
+        tkvars = {}
         for tab in self.tab_names:
             if tab == "tools":
                 for ttab in self.tools_tab_names:
@@ -116,7 +120,7 @@ class CommandTab(ttk.Frame):  # pylint:disable=too-many-ancestors
     def __init__(self, parent, category, command):
         logger.debug("Initializing %s: (category: '%s', command: '%s')",
                      self.__class__.__name__, category, command)
-        super().__init__(parent, name="tab_{}".format(command.lower()))
+        super().__init__(parent, name=f"tab_{command.lower()}")
 
         self.category = category
         self.actionbtns = parent.actionbtns
@@ -171,7 +175,7 @@ class ActionFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
         actframe.pack(fill=tk.X, side=tk.RIGHT)
 
         tk_vars = get_config().tk_vars
-        var_value = "{},{}".format(category, self.command)
+        var_value = f"{category},{self.command}"
 
         btngen = ttk.Button(actframe,
                             image=get_images().icons["generate"],
@@ -184,12 +188,15 @@ class ActionFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
                 text=_("Output command line options to the console"),
                 wrap_length=200)
 
-        btnact = ttk.Button(actframe,
-                            image=get_images().icons["start"],
-                            text=" {}".format(self.title),
-                            compound=tk.LEFT,
-                            width=14,
-                            command=lambda: tk_vars["action"].set(var_value))
+        btnact = ttk.Button(
+            actframe,
+            image=get_images().icons["start"],
+            text=f" {self.title}",
+            compound=tk.LEFT,
+            width=14,
+            command=lambda: tk_vars["action"].set(var_value),
+        )
+
         btnact.pack(side=tk.LEFT, fill=tk.X, expand=True)
         Tooltip(btnact,
                 text=_("Run the {} script").format(self.title),

@@ -82,10 +82,11 @@ class Preview(tk.Tk):  # pylint:disable=too-few-public-methods
     @property
     def _available_masks(self):
         """ list: The mask names that are available for every face in the alignments file """
-        retval = [key
-                  for key, val in self._samples.alignments.mask_summary.items()
-                  if val == self._samples.alignments.faces_count]
-        return retval
+        return [
+            key
+            for key, val in self._samples.alignments.mask_summary.items()
+            if val == self._samples.alignments.faces_count
+        ]
 
     def _initialize_tkinter(self):
         """ Initialize a standalone tkinter instance. """
@@ -735,8 +736,10 @@ class FacesDisplay():
         matrices. """
         logger.debug("Updating destination faces")
         self._faces["dst"] = []
-        destination = self.destination if self.destination else [np.ones_like(src["image"])
-                                                                 for src in self.source]
+        destination = self.destination or [
+            np.ones_like(src["image"]) for src in self.source
+        ]
+
         for idx, image in enumerate(destination):
             self._faces["dst"].append(transform_image(image,
                                                       self._faces["matrix"][idx],
@@ -823,8 +826,13 @@ class ConfigTools():
     @property
     def sections(self):
         """ list: The sorted section names that exist within the convert Configuration options. """
-        return sorted(set(plugin.split(".")[0] for plugin in self._config.config.sections()
-                          if plugin.split(".")[0] != "writer"))
+        return sorted(
+            {
+                plugin.split(".")[0]
+                for plugin in self._config.config.sections()
+                if plugin.split(".")[0] != "writer"
+            }
+        )
 
     @property
     def plugins_dict(self):

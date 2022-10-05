@@ -358,12 +358,20 @@ class ImageAugmentation():
         batch_src = np.append(batch_src_points, edge_anchors, axis=1)
         batch_dst = np.append(batch_dst, edge_anchors, axis=1)
 
-        rem_indices = [list(set(idx for fpl in (src, dst)
-                                for idx, (pty, ptx) in enumerate(fpl)
-                                if cv2.pointPolygonTest(face_core, (pty, ptx), False) >= 0))
-                       for src, dst, face_core in zip(batch_src[:, :18, :],
-                                                      batch_dst[:, :18, :],
-                                                      face_cores)]
+        rem_indices = [
+            list(
+                {
+                    idx
+                    for fpl in (src, dst)
+                    for idx, (pty, ptx) in enumerate(fpl)
+                    if cv2.pointPolygonTest(face_core, (pty, ptx), False) >= 0
+                }
+            )
+            for src, dst, face_core in zip(
+                batch_src[:, :18, :], batch_dst[:, :18, :], face_cores
+            )
+        ]
+
         lbatch_src = [np.delete(src, idxs, axis=0) for idxs, src in zip(rem_indices, batch_src)]
         lbatch_dst = [np.delete(dst, idxs, axis=0) for idxs, dst in zip(rem_indices, batch_dst)]
 

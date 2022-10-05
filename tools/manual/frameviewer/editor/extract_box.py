@@ -95,8 +95,8 @@ class ExtractBox(Editor):
         for idx, (anc_dsp, anc_grb) in enumerate(zip(*anchor_points)):
             dsp_kwargs = dict(outline=color, fill=fill_color, width=1)
             grb_kwargs = dict(outline="", fill="", width=1, activefill=activefill_color)
-            dsp_key = "eb_anc_dsp_{}".format(idx)
-            grb_key = "eb_anc_grb_{}".format(idx)
+            dsp_key = f"eb_anc_dsp_{idx}"
+            grb_key = f"eb_anc_grb_{idx}"
             self._object_tracker(dsp_key, "oval", face_index, anc_dsp, dsp_kwargs)
             self._object_tracker(grb_key, "oval", face_index, anc_grb, grb_kwargs)
         logger.trace("Updated extract box anchor annotations")
@@ -222,7 +222,7 @@ class ExtractBox(Editor):
             The tkinter mouse event.
         """
         if self._mouse_location is None:
-            self._drag_data = dict()
+            self._drag_data = {}
             self._drag_callback = None
             return
         self._drag_data["current_location"] = np.array((event.x, event.y))
@@ -270,10 +270,10 @@ class ExtractBox(Editor):
             The tkinter mouse event.
         """
         face_idx = self._mouse_location[1]
-        face_tag = "eb_box_face_{}".format(face_idx)
+        face_tag = f"eb_box_face_{face_idx}"
         position = np.array((event.x, event.y))
         box = np.array(self._canvas.coords(face_tag))
-        center = np.array((sum(box[0::2]) / 4, sum(box[1::2]) / 4))
+        center = np.array((sum(box[::2]) / 4, sum(box[1::2]) / 4))
         if not self._check_in_bounds(center, box, position):
             logger.trace("Drag out of bounds. Not updating")
             self._drag_data["current_location"] = position
@@ -365,11 +365,11 @@ class ExtractBox(Editor):
             The tkinter mouse event.
         """
         face_idx = self._mouse_location[1]
-        face_tag = "eb_box_face_{}".format(face_idx)
+        face_tag = f"eb_box_face_{face_idx}"
         box = np.array(self._canvas.coords(face_tag))
         position = np.array((event.x, event.y))
 
-        center = np.array((sum(box[0::2]) / 4, sum(box[1::2]) / 4))
+        center = np.array((sum(box[::2]) / 4, sum(box[1::2]) / 4))
         init_to_center = self._drag_data["current_location"] - center
         new_to_center = position - center
         angle = np.rad2deg(np.arctan2(*new_to_center) - np.arctan2(*init_to_center))

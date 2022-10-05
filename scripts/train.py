@@ -102,7 +102,7 @@ class Train():  # pylint:disable=too-few-public-methods
                 logger.error("Error: '%s' contains no images", image_dir)
                 sys.exit(1)
             # Validate the first image is a detected face
-            test_image = next(img for img in images[side])
+            test_image = next(iter(images[side]))
             meta = read_image_meta(test_image)
             logger.debug("Test file: (filename: %s, metadata: %s)", test_image, meta)
             if "itxt" not in meta or "alignments" not in meta["itxt"]:
@@ -114,8 +114,11 @@ class Train():  # pylint:disable=too-few-public-methods
 
             logger.info("Model %s Directory: '%s' (%s images)",
                         side.upper(), image_dir, len(images[side]))
-        logger.debug("Got image paths: %s", [(key, str(len(val)) + " images")
-                                             for key, val in images.items()])
+        logger.debug(
+            "Got image paths: %s",
+            [(key, f"{len(val)} images") for key, val in images.items()],
+        )
+
         self._validate_image_counts(images)
         return images
 
@@ -189,7 +192,7 @@ class Train():  # pylint:disable=too-few-public-methods
             # Time-lapse images must appear in the training set, as we need access to alignment and
             # mask info. Check filenames are there to save failing much later in the process.
             training_images = [os.path.basename(img) for img in self._images[side]]
-            if not all(img in training_images for img in filenames):
+            if any(img not in training_images for img in filenames):
                 raise FaceswapError(f"All images in the Timelapse folder '{folder}' must exist in "
                                     f"the training folder '{training_folder}'")
 
@@ -344,11 +347,7 @@ class Train():  # pylint:disable=too-few-public-methods
                 trainer.toggle_mask()
                 self._preview.request_refresh()
 
-            if self._preview.should_refresh():
-                viewer = display_func
-            else:
-                viewer = None
-
+            viewer = display_func if self._preview.should_refresh() else None
             timelapse = self._timelapse if save_iteration else {}
             trainer.train_one_step(viewer, timelapse)
 

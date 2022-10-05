@@ -74,7 +74,7 @@ class _LogFiles():
         """
         session = os.path.split(os.path.split(folder)[0])[1]
         session_id = session[session.rfind("_") + 1:]
-        retval = None if not session_id.isdigit() else int(session_id)
+        retval = int(session_id) if session_id.isdigit() else None
         logger.debug("folder: '%s', session_id: %s", folder, retval)
         return retval
 
@@ -210,7 +210,7 @@ class _Cache():
                             for idx in sorted(data)])
         times, loss = self._process_data(data, times, loss, is_live)
 
-        if is_live and not all(len(val) == len(self._loss_labels) for val in loss):
+        if is_live and any(len(val) != len(self._loss_labels) for val in loss):
             # TODO Many attempts have been made to fix this for live graph logging, and the issue
             # of non-consistent loss record sizes keeps coming up. In the meantime we shall swallow
             # any loss values that are of incorrect length so graph remains functional. This will,
@@ -290,8 +290,8 @@ class _Cache():
 
         if len(loss[-1]) != len(self._loss_labels):
             logger.debug("Truncated loss found. loss count: %s", len(loss))
-            idx = sorted(data)[-1]
             if is_live:
+                idx = sorted(data)[-1]
                 logger.debug("Setting carried over data: %s", data[idx])
                 self._carry_over[idx] = data[idx]
             logger.debug("Removing truncated loss: (timestamp: %s, loss: %s)",
@@ -355,12 +355,11 @@ class _Cache():
         """
         if session_id is None:
             raw = self._data
-        else:
-            data = self._data.get(session_id)
-            if not data:
-                return None
+        elif data := self._data.get(session_id):
             raw = {session_id: data}
 
+        else:
+            return None
         dtype = "float32" if metric == "loss" else "float64"
 
         retval = {}
@@ -528,10 +527,8 @@ class TensorBoardLogs():
         retval = {}
         for idx in [session_id] if session_id else self.session_ids:
             self._check_cache(idx)
-            data = self._cache.get_data(idx, "timestamps")
-            if not data:
-                continue
-            retval[idx] = data[idx]["timestamps"]
+            if data := self._cache.get_data(idx, "timestamps"):
+                retval[idx] = data[idx]["timestamps"]
         logger.debug({k: v.shape for k, v in retval.items()})
         return retval
 

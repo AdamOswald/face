@@ -46,9 +46,7 @@ def define_G(
     net = None
     norm_layer = get_norm_layer(norm_type=norm)
 
-    if netG == "resnet_9blocks":
-        raise NotImplementedError
-    elif netG == "resnet_6blocks":
+    if netG in ["resnet_9blocks", "resnet_6blocks"]:
         raise NotImplementedError
     elif netG == "unet_128":
         net = UnetGenerator(
@@ -59,7 +57,7 @@ def define_G(
             input_nc, output_nc, 8, ngf, norm_layer=norm_layer, use_dropout=use_dropout
         )
     else:
-        raise NotImplementedError("Generator model name [%s] is not recognized" % netG)
+        raise NotImplementedError(f"Generator model name [{netG}] is not recognized")
     init_weights(net, init_type, init_gain)
     return net
 
@@ -103,7 +101,10 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     elif netD == 'pixel':     # classify if each pixel is real or fake
         net = PixelDiscriminator(input_nc, ndf, norm_layer=norm_layer)
     else:
-        raise NotImplementedError('Discriminator model name [%s] is not recognized' % netD)
+        raise NotImplementedError(
+            f'Discriminator model name [{netD}] is not recognized'
+        )
+
 
     init_weights(net, init_type, init_gain)
     return net
@@ -144,7 +145,7 @@ class UnetGenerator(nn.Module):
             norm_layer=norm_layer,
             innermost=True,
         )  # add the innermost layer
-        for i in range(num_downs - 5):  # add intermediate layers with ngf * 8 filters
+        for _ in range(num_downs - 5):
             unet_block = UnetSkipConnectionBlock(
                 ngf * 8,
                 ngf * 8,
@@ -256,7 +257,4 @@ class UnetSkipConnectionBlock(nn.Module):
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
-        if self.outermost:
-            return self.model(x)
-        else:  # add skip connections
-            return torch.cat([x, self.model(x)], 1)
+        return self.model(x) if self.outermost else torch.cat([x, self.model(x)], 1)

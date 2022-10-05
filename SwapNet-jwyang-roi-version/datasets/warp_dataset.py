@@ -55,7 +55,7 @@ class WarpDataset(BaseDataset):
         """
         super().__init__(opt)
 
-        self.cloth_dir = cloth_dir if cloth_dir else os.path.join(opt.dataroot, "cloth")
+        self.cloth_dir = cloth_dir or os.path.join(opt.dataroot, "cloth")
         print("cloth dir", self.cloth_dir)
         extensions = [".npz"] if self.opt.cloth_representation == "labels" else None
         print("Extensions:", extensions)
@@ -63,7 +63,7 @@ class WarpDataset(BaseDataset):
         if not opt.shuffle_data:
             self.cloth_files.sort()
 
-        self.body_dir = body_dir if body_dir else os.path.join(opt.dataroot, "body")
+        self.body_dir = body_dir or os.path.join(opt.dataroot, "body")
         if not self.is_train:  # only load these during inference
             self.body_files = find_valid_files(self.body_dir)
             if not opt.shuffle_data:
@@ -79,10 +79,11 @@ class WarpDataset(BaseDataset):
         """
         Get the length of usable images. Note the length of cloth and body segmentations should be same
         """
-        if not self.is_train:
-            return min(len(self.cloth_files), len(self.body_files))
-        else:
-            return len(self.cloth_files)
+        return (
+            len(self.cloth_files)
+            if self.is_train
+            else min(len(self.cloth_files), len(self.body_files))
+        )
 
     def _load_cloth(self, index) -> Tuple[str, Tensor, Tensor]:
         """
@@ -92,28 +93,27 @@ class WarpDataset(BaseDataset):
         target_cloth_tensor = decompress_cloth_segment(
             cloth_file, self.opt.cloth_channels
         )
-        if self.is_train:
-            # during train, we want to do some fancy transforms
-            if self.opt.dataset_mode == "image":
-                # in image mode, the input cloth is the same as the target cloth
-                input_cloth_tensor = target_cloth_tensor.clone()
-            elif self.opt.dataset_mode == "video":
-                # video mode, can choose a random image
-                cloth_file = self.cloth_files[random.randint(0, len(self)) - 1]
-                input_cloth_tensor = decompress_cloth_segment(
-                    cloth_file, self.opt.cloth_channels
-                )
-            else:
-                raise ValueError(self.opt.dataset_mode)
-
-            # apply the transformation for input cloth segmentation
-            if self.cloth_transform:
-                input_cloth_tensor = self._perform_cloth_transform(input_cloth_tensor)
-
-            return cloth_file, input_cloth_tensor, target_cloth_tensor
-        else:
+        if not self.is_train:
             # during inference, we just want to load the current cloth
             return cloth_file, target_cloth_tensor, target_cloth_tensor
+        # during train, we want to do some fancy transforms
+        if self.opt.dataset_mode == "image":
+            # in image mode, the input cloth is the same as the target cloth
+            input_cloth_tensor = target_cloth_tensor.clone()
+        elif self.opt.dataset_mode == "video":
+            # video mode, can choose a random image
+            cloth_file = self.cloth_files[random.randint(0, len(self)) - 1]
+            input_cloth_tensor = decompress_cloth_segment(
+                cloth_file, self.opt.cloth_channels
+            )
+        else:
+            raise ValueError(self.opt.dataset_mode)
+
+        # apply the transformation for input cloth segmentation
+        if self.cloth_transform:
+            input_cloth_tensor = self._perform_cloth_transform(input_cloth_tensor)
+
+        return cloth_file, input_cloth_tensor, target_cloth_tensor
 
     def _load_body(self, index):
         """ Loads the body file as a tensor """

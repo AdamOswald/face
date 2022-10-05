@@ -25,7 +25,7 @@ def texture_editing(prn, args):
     vertices = prn.get_vertices(pos)
     image = image/255.
     texture = cv2.remap(image, pos[:,:,:2].astype(np.float32), None, interpolation=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT,borderValue=(0))
-    
+
     #-- 2. Texture Editing
     Mode = args.mode
     # change part of texture(for data augumentation/selfie editing. Here modify eyes for example)
@@ -43,7 +43,7 @@ def texture_editing(prn, args):
 
         # modify texture
         new_texture = texture*(1 - eye_mask[:,:,np.newaxis]) + ref_texture*eye_mask[:,:,np.newaxis]
-    
+
     # change whole face(face swap)
     elif Mode == 1: 
         # texture from another image or a processed texture
@@ -63,7 +63,7 @@ def texture_editing(prn, args):
     vis_colors = np.ones((vertices.shape[0], 1))
     face_mask = render_texture(vertices.T, vis_colors.T, prn.triangles.T, h, w, c = 1)
     face_mask = np.squeeze(face_mask > 0).astype(np.float32)
-    
+
     new_colors = prn.get_colors_from_texture(new_texture)
     new_image = render_texture(vertices.T, new_colors.T, prn.triangles.T, h, w, c = 3)
     new_image = image*(1 - face_mask[:,:,np.newaxis]) + new_image*face_mask[:,:,np.newaxis]
@@ -74,7 +74,7 @@ def texture_editing(prn, args):
     vis_max = np.max(vis_ind, 0)
     center = (int((vis_min[1] + vis_max[1])/2+0.5), int((vis_min[0] + vis_max[0])/2+0.5))
     output = cv2.seamlessClone((new_image*255).astype(np.uint8), (image*255).astype(np.uint8), (face_mask*255).astype(np.uint8), center, cv2.NORMAL_CLONE)
-   
+
     # save output
     imsave(args.output_path, output) 
     print('Done.')

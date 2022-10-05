@@ -23,8 +23,7 @@ class L1_Charbonnier_loss(nn.Module):
     def forward(self, X, Y):
         diff = torch.add(X, -Y)
         error = torch.sqrt(diff * diff + self.eps)
-        loss = torch.sum(error)
-        return loss
+        return torch.sum(error)
 
 
 def gaussian(window_size, sigma):
@@ -63,11 +62,10 @@ def get_gaussian_kernel1d(kernel_size: int,
             (kernel_size % 2 == 0) and not force_even) or (
             kernel_size <= 0)):
         raise TypeError(
-            "kernel_size must be an odd positive integer. "
-            "Got {}".format(kernel_size)
+            f"kernel_size must be an odd positive integer. Got {kernel_size}"
         )
-    window_1d: torch.Tensor = gaussian(kernel_size, sigma)
-    return window_1d
+
+    return gaussian(kernel_size, sigma)
 
 
 def get_gaussian_kernel2d(
@@ -103,22 +101,16 @@ def get_gaussian_kernel2d(
     """
     if not isinstance(kernel_size, tuple) or len(kernel_size) != 2:
         raise TypeError(
-            "kernel_size must be a tuple of length two. Got {}".format(
-                kernel_size
-            )
+            f"kernel_size must be a tuple of length two. Got {kernel_size}"
         )
+
     if not isinstance(sigma, tuple) or len(sigma) != 2:
-        raise TypeError(
-            "sigma must be a tuple of length two. Got {}".format(sigma)
-        )
+        raise TypeError(f"sigma must be a tuple of length two. Got {sigma}")
     ksize_x, ksize_y = kernel_size
     sigma_x, sigma_y = sigma
     kernel_x: torch.Tensor = get_gaussian_kernel1d(ksize_x, sigma_x, force_even)
     kernel_y: torch.Tensor = get_gaussian_kernel1d(ksize_y, sigma_y, force_even)
-    kernel_2d: torch.Tensor = torch.matmul(
-        kernel_x.unsqueeze(-1), kernel_y.unsqueeze(-1).t()
-    )
-    return kernel_2d
+    return torch.matmul(kernel_x.unsqueeze(-1), kernel_y.unsqueeze(-1).t())
 
 
 ##################################
@@ -207,26 +199,22 @@ class SSIM(nn.Module):
             img1: torch.Tensor,
             img2: torch.Tensor) -> torch.Tensor:
         if not torch.is_tensor(img1):
-            raise TypeError("Input img1 type is not a torch.Tensor. Got {}"
-                            .format(type(img1)))
+            raise TypeError(f"Input img1 type is not a torch.Tensor. Got {type(img1)}")
         if not torch.is_tensor(img2):
-            raise TypeError("Input img2 type is not a torch.Tensor. Got {}"
-                            .format(type(img2)))
-        if not len(img1.shape) == 4:
-            raise ValueError("Invalid img1 shape, we expect BxCxHxW. Got: {}"
-                             .format(img1.shape))
-        if not len(img2.shape) == 4:
-            raise ValueError("Invalid img2 shape, we expect BxCxHxW. Got: {}"
-                             .format(img2.shape))
-        if not img1.shape == img2.shape:
-            raise ValueError("img1 and img2 shapes must be the same. Got: {}"
-                             .format(img1.shape, img2.shape))
-        if not img1.device == img2.device:
-            raise ValueError("img1 and img2 must be in the same device. Got: {}"
-                             .format(img1.device, img2.device))
-        if not img1.dtype == img2.dtype:
-            raise ValueError("img1 and img2 must be in the same dtype. Got: {}"
-                             .format(img1.dtype, img2.dtype))
+            raise TypeError(f"Input img2 type is not a torch.Tensor. Got {type(img2)}")
+        if len(img1.shape) != 4:
+            raise ValueError(f"Invalid img1 shape, we expect BxCxHxW. Got: {img1.shape}")
+        if len(img2.shape) != 4:
+            raise ValueError(f"Invalid img2 shape, we expect BxCxHxW. Got: {img2.shape}")
+        if img1.shape != img2.shape:
+            raise ValueError(f"img1 and img2 shapes must be the same. Got: {img1.shape}")
+        if img1.device != img2.device:
+            raise ValueError(
+                f"img1 and img2 must be in the same device. Got: {img1.device}"
+            )
+
+        if img1.dtype != img2.dtype:
+            raise ValueError(f"img1 and img2 must be in the same dtype. Got: {img1.dtype}")
         # prepare kernel
         b, c, h, w = img1.shape
         tmp_kernel: torch.Tensor = self.window.to(img1.device).to(img1.dtype)
@@ -246,7 +234,7 @@ class SSIM(nn.Module):
         sigma12 = self.filter2D(img1 * img2, kernel, c) - mu1_mu2
 
         ssim_map = ((2 * mu1_mu2 + self.C1) * (2 * sigma12 + self.C2)) / \
-                   ((mu1_sq + mu2_sq + self.C1) * (sigma1_sq + sigma2_sq + self.C2))
+                       ((mu1_sq + mu2_sq + self.C1) * (sigma1_sq + sigma2_sq + self.C2))
 
         loss = torch.clamp(torch.tensor(1.) - ssim_map, min=0, max=1) / 2.
 
@@ -254,8 +242,6 @@ class SSIM(nn.Module):
             loss = torch.mean(loss)
         elif self.reduction == 'sum':
             loss = torch.sum(loss)
-        elif self.reduction == 'none':
-            pass
         return loss
 
 

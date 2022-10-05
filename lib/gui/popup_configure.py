@@ -138,7 +138,7 @@ class _ConfigurePlugins(tk.Toplevel):
         content_frame.pack(fill=tk.BOTH, padx=5, pady=(0, 5), expand=True, side=tk.TOP)
         footer_frame.pack(fill=tk.X, padx=5, pady=(0, 5), side=tk.BOTTOM)
 
-        select = name if name else self._tree.get_children()[0]
+        select = name or self._tree.get_children()[0]
         self._tree.selection_set(select)
         self._tree.focus(select)
         self._select_item(0)
@@ -333,7 +333,7 @@ class _Tree(ttk.Frame):  # pylint:disable=too-many-ancestors
         for cat in categories:
             img = get_images().icons.get(f"settings_{cat}", "")
             text = cat.replace("_", " ").title()
-            text = " " + text if img else text
+            text = f" {text}" if img else text
             is_open = tk.TRUE if name is None or name == cat else tk.FALSE
             tree.insert("", "end", cat, text=text, image=img, open=is_open, tags="category")
             self._process_sections(tree, data[cat], cat, name == cat)
@@ -507,7 +507,7 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
         subsections: list
             The full list of subsections ending on the required node
         """
-        labels = ["global"] if not subsections else subsections
+        labels = subsections or ["global"]
         self._vars["header"].set(" - ".join(sect.replace("_", " ").title() for sect in labels))
         self._set_display(section, subsections)
 
@@ -644,11 +644,7 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
         # Create a new config to pull through any defaults change
         new_config = ConfigParser(allow_no_value=True)
 
-        if "|" in selection:
-            lookup = ".".join(selection.split("|")[1:])
-        else:  # Expand global out from root node
-            lookup = "global"
-
+        lookup = ".".join(selection.split("|")[1:]) if "|" in selection else "global"
         if page_only and lookup not in config.config.sections():
             logger.info("No settings to save for the current page")
             return
@@ -810,9 +806,7 @@ class _Presets():
 
         i = 0
         filename = f"{base_filename}.json"
-        while True:
-            if not os.path.exists(os.path.join(self._preset_path, filename)):
-                break
+        while os.path.exists(os.path.join(self._preset_path, filename)):
             logger.debug("File pre-exists: %s", filename)
             filename = f"{base_filename}_{i}.json"
             i += 1

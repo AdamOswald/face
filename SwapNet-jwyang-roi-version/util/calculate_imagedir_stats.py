@@ -62,11 +62,7 @@ for d in args.data_dir:
     print("mean:{}\nstd:{}".format(mean, std))
 
     def file_has_lines(f):
-        for i, _ in enumerate(f):
-            if i > 1:
-                return True
-        else:
-            return False
+        return any(i > 1 for i, _ in enumerate(f))
 
     stats = {
         "path": d.split(os.path.sep)[-1],

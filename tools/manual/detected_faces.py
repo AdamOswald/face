@@ -331,14 +331,13 @@ class _DiskIO():  # pylint:disable=too-few-public-methods
         num_alignments = len(alignments)
         num_faces = len(faces)
         if num_alignments == num_faces:
-            retval = False
+            return False
         elif num_alignments > num_faces:
             faces.extend([DetectedFace() for _ in range(num_faces, num_alignments)])
-            retval = True
+            return True
         else:
             del faces[num_alignments:]
-            retval = True
-        return retval
+            return True
 
     def extract(self):
         """ Extract the current faces to a folder.
@@ -473,16 +472,19 @@ class Filter():
         """ int: The number of frames that meet the filter criteria returned by
         :attr:`~tools.manual.manual.TkGlobals.filter_mode`. """
         face_count_per_index = self._detected_faces.face_count_per_index
-        if self._globals.filter_mode == "No Faces":
-            retval = sum(1 for fcount in face_count_per_index if fcount == 0)
-        elif self._globals.filter_mode == "Has Face(s)":
-            retval = sum(1 for fcount in face_count_per_index if fcount != 0)
-        elif self._globals.filter_mode == "Multiple Faces":
-            retval = sum(1 for fcount in face_count_per_index if fcount > 1)
+        if self._globals.filter_mode == "Has Face(s)":
+            retval = sum(fcount != 0 for fcount in face_count_per_index)
         elif self._globals.filter_mode == "Misaligned Faces":
             distance = self._filter_distance
-            retval = sum(1 for frame in self._detected_faces.current_faces
-                         if any(face.aligned.average_distance > distance for face in frame))
+            retval = sum(
+                any((face.aligned.average_distance > distance for face in frame))
+                for frame in self._detected_faces.current_faces
+            )
+
+        elif self._globals.filter_mode == "Multiple Faces":
+            retval = sum(fcount > 1 for fcount in face_count_per_index)
+        elif self._globals.filter_mode == "No Faces":
+            retval = sum(fcount == 0 for fcount in face_count_per_index)
         else:
             retval = len(face_count_per_index)
         logger.trace("filter mode: %s, frame count: %s", self._globals.filter_mode, retval)
@@ -586,8 +588,7 @@ class FaceUpdate():
         if not self._updated_frame_indices and not self._tk_unsaved.get():
             self._tk_unsaved.set(True)
         self._updated_frame_indices.add(frame_index)
-        retval = self._frame_faces[frame_index]
-        return retval
+        return self._frame_faces[frame_index]
 
     def add(self, frame_index, pnt_x, width, pnt_y, height):
         """ Add a :class:`~lib.align.DetectedFace` object to the current frame with the
@@ -888,7 +889,7 @@ class ThumbsCreator():
         self._num_threads = os.cpu_count() - 2
         if self._is_video and single_process:
             self._num_threads = 1
-        elif self._is_video and not single_process:
+        elif self._is_video:
             self._num_threads = min(self._num_threads, len(self._meta["key_frames"]))
         else:
             self._num_threads = max(self._num_threads, 32)
@@ -1008,7 +1009,7 @@ class ThumbsCreator():
                      pts_start, pts_end, start_index, segment_count)
         reader = self._get_reader(pts_start, pts_end)
         idx = 0
-        sample_filename = next(fname for fname in self._alignments.data)
+        sample_filename = next(iter(self._alignments.data))
         vidname = sample_filename[:sample_filename.rfind("_")]
         for idx, frame in enumerate(reader):
             frame_idx = idx + start_index

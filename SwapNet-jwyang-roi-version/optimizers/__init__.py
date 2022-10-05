@@ -43,9 +43,9 @@ def define_optimizer(parameters, opt, net: str) -> torch.optim.Optimizer:
     :return:
     """
     # check whether optimizer_G or optimizer_D
-    if net != "D" and net != "G":
+    if net not in ["D", "G"]:
         raise ValueError(f"net arg must be 'D' or 'G', received {net}")
-    arg = "optimizer_" + net
+    arg = f"optimizer_{net}"
     choice = getattr(opt, arg)
 
     # add optimizer kwargs
@@ -56,5 +56,4 @@ def define_optimizer(parameters, opt, net: str) -> torch.optim.Optimizer:
         kwargs["final_lr"] = opt.final_lr
 
     optim_class = eval(choice)
-    optimizer = optim_class(parameters, **kwargs)
-    return optimizer
+    return optim_class(parameters, **kwargs)

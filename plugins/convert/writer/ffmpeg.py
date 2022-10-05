@@ -68,19 +68,23 @@ class Writer(Output):
         codec = self.config["codec"]
         tune = self.config["tune"]
         # Force all frames to the same size
-        output_args = ["-vf", f"scale={self._output_dimensions}"]
+        output_args = [
+            "-vf",
+            f"scale={self._output_dimensions}",
+            *["-crf", str(self.config["crf"])],
+            *["-preset", self.config["preset"]],
+        ]
 
-        output_args.extend(["-crf", str(self.config["crf"])])
-        output_args.extend(["-preset", self.config["preset"]])
 
         if tune is not None and tune in self._valid_tunes[codec]:
             output_args.extend(["-tune", tune])
 
-        if codec == "libx264" and self.config["profile"] != "auto":
-            output_args.extend(["-profile:v", self.config["profile"]])
+        if codec == "libx264":
+            if self.config["profile"] != "auto":
+                output_args.extend(["-profile:v", self.config["profile"]])
 
-        if codec == "libx264" and self.config["level"] != "auto":
-            output_args.extend(["-level", self.config["level"]])
+            if self.config["level"] != "auto":
+                output_args.extend(["-level", self.config["level"]])
 
         logger.debug(output_args)
         return output_args
