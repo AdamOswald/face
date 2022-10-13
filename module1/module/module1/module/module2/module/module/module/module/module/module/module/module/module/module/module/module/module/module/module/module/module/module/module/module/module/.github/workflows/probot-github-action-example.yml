@@ -1,0 +1,14 @@
+# https://github.com/probot/example-github-action
+name: Probot GitHub Action example
+on:
+  issues:
+    types:
+      - opened
+
+jobs:
+  sayHelloWorld:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: probot/example-github-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
