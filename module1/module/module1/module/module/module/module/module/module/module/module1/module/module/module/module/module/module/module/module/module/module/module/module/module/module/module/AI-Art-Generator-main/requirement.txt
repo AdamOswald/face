@@ -1,0 +1,6 @@
+Pillow
+Tensorflow
+Matplotlib
+Keras
+Numpy
+tqdm

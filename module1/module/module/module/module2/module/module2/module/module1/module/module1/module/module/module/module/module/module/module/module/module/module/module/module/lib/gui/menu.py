@@ -1,0 +1,421 @@
+#!/usr/bin python3
+""" The Menu Bars for faceswap GUI """
+
+import gettext
+import locale
+import logging
+import os
+import sys
+import tkinter as tk
+from tkinter import ttk
+import webbrowser
+
+from subprocess import Popen, PIPE, STDOUT
+
+from lib.multithreading import MultiThread
+from lib.serializer import get_serializer
+from lib.utils import FaceswapError
+import update_deps
+
+from .popup_configure import open_popup
+from .custom_widgets import Tooltip
+from .utils import get_config, get_images
+
+logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+
+# LOCALES
+_LANG = gettext.translation("gui.tooltips", localedir="locales", fallback=True)
+_ = _LANG.gettext
+
+_WORKING_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+_RESOURCES = [(_("faceswap.dev - Guides and Forum"), "https://www.faceswap.dev"),
+              (_("Patreon - Support this project"), "https://www.patreon.com/faceswap"),
+              (_("Discord - The FaceSwap Discord server"), "https://discord.gg/VasFUAy"),
+              (_("Github - Our Source Code"), "https://github.com/deepfakes/faceswap")]
+
+
+class MainMenuBar(tk.Menu):  # pylint:disable=too-many-ancestors
+    """ GUI Main Menu Bar """
+    def __init__(self, master=None):
+        logger.debug("Initializing %s", self.__class__.__name__)
+        super().__init__(master)
+        self.root = master
+
+        self.file_menu = FileMenu(self)
+        self.settings_menu = SettingsMenu(self)
+        self.help_menu = HelpMenu(self)
+
+        self.add_cascade(label="File", menu=self.file_menu, underline=0)
+        self.add_cascade(label="Settings", menu=self.settings_menu, underline=0)
+        self.add_cascade(label="Help", menu=self.help_menu, underline=0)
+        logger.debug("Initialized %s", self.__class__.__name__)
+
+
+class SettingsMenu(tk.Menu):  # pylint:disable=too-many-ancestors
+    """ Settings menu items and functions """
+    def __init__(self, parent):
+        logger.debug("Initializing %s", self.__class__.__name__)
+        super().__init__(parent, tearoff=0)
+        self.root = parent.root
+        self.build()
+        logger.debug("Initialized %s", self.__class__.__name__)
+
+    def build(self):
+        """ Add the settings menu to the menu bar """
+        # pylint: disable=cell-var-from-loop
+        logger.debug("Building settings menu")
+        self.add_command(label="Configure Settings...",
+                         underline=0,
+                         command=open_popup)
+        logger.debug("Built settings menu")
+
+
+class FileMenu(tk.Menu):  # pylint:disable=too-many-ancestors
+    """ File menu items and functions """
+    def __init__(self, parent):
+        logger.debug("Initializing %s", self.__class__.__name__)
+        super().__init__(parent, tearoff=0)
+        self.root = parent.root
+        self._config = get_config()
+        self.recent_menu = tk.Menu(self, tearoff=0, postcommand=self.refresh_recent_menu)
+        self.build()
+        logger.debug("Initialized %s", self.__class__.__name__)
+
+    def build(self):
+        """ Add the file menu to the menu bar """
+        logger.debug("Building File menu")
+        self.add_command(label="New Project...",
+                         underline=0,
+                         accelerator="Ctrl+N",
+                         command=self._config.project.new)
+        self.root.bind_all("<Control-n>", self._config.project.new)
+        self.add_command(label="Open Project...",
+                         underline=0,
+                         accelerator="Ctrl+O",
+                         command=self._config.project.load)
+        self.root.bind_all("<Control-o>", self._config.project.load)
+        self.add_command(label="Save Project",
+                         underline=0,
+                         accelerator="Ctrl+S",
+                         command=lambda: self._config.project.save(save_as=False))
+        self.root.bind_all("<Control-s>", lambda e: self._config.project.save(e, save_as=False))
+        self.add_command(label="Save Project as...",
+                         underline=13,
+                         accelerator="Ctrl+Alt+S",
+                         command=lambda: self._config.project.save(save_as=True))
+        self.root.bind_all("<Control-Alt-s>", lambda e: self._config.project.save(e, save_as=True))
+        self.add_command(label="Reload Project from Disk",
+                         underline=0,
+                         accelerator="F5",
+                         command=self._config.project.reload)
+        self.root.bind_all("<F5>", self._config.project.reload)
+        self.add_command(label="Close Project",
+                         underline=0,
+                         accelerator="Ctrl+W",
+                         command=self._config.project.close)
+        self.root.bind_all("<Control-w>", self._config.project.close)
+        self.add_separator()
+        self.add_command(label="Open Task...",
+                         underline=5,
+                         accelerator="Ctrl+Alt+T",
+                         command=lambda: self._config.tasks.load(current_tab=False))
+        self.root.bind_all("<Control-Alt-t>",
+                           lambda e: self._config.tasks.load(e, current_tab=False))
+        self.add_separator()
+        self.add_cascade(label="Open recent", underline=6, menu=self.recent_menu)
+        self.add_separator()
+        self.add_command(label="Quit",
+                         underline=0,
+                         accelerator="Alt+F4",
+                         command=self.root.close_app)
+        self.root.bind_all("<Alt-F4>", self.root.close_app)
+        logger.debug("Built File menu")
+
+    def build_recent_menu(self):
+        """ Load recent files into menu bar """
+        logger.debug("Building Recent Files menu")
+        serializer = get_serializer("json")
+        menu_file = os.path.join(self._config.pathcache, ".recent.json")
+        if not os.path.isfile(menu_file) or os.path.getsize(menu_file) == 0:
+            self.clear_recent_files(serializer, menu_file)
+        try:
+            recent_files = serializer.load(menu_file)
+        except FaceswapError as err:
+            if "Error unserializing data for type" in str(err):
+                # Some reports of corruption breaking menus
+                logger.warning("There was an error opening the recent files list so it has been "
+                               "reset.")
+                self.clear_recent_files(serializer, menu_file)
+                recent_files = []
+
+        logger.debug("Loaded recent files: %s", recent_files)
+        removed_files = []
+        for recent_item in recent_files:
+            filename, command = recent_item
+            if not os.path.isfile(filename):
+                logger.debug("File does not exist. Flagging for removal: '%s'", filename)
+                removed_files.append(recent_item)
+                continue
+            # Legacy project files didn't have a command stored
+            command = command if command else "project"
+            logger.debug("processing: ('%s', %s)", filename, command)
+            if command.lower() == "project":
+                load_func = self._config.project.load
+                lbl = command
+                kwargs = dict(filename=filename)
+            else:
+                load_func = self._config.tasks.load
+                lbl = f"{command} Task"
+                kwargs = dict(filename=filename, current_tab=False)
+            self.recent_menu.add_command(
+                label=f"{filename} ({lbl.title()})",
+                command=lambda kw=kwargs, fn=load_func: fn(**kw))
+        if removed_files:
+            for recent_item in removed_files:
+                logger.debug("Removing from recent files: `%s`", recent_item[0])
+                recent_files.remove(recent_item)
+            serializer.save(menu_file, recent_files)
+        self.recent_menu.add_separator()
+        self.recent_menu.add_command(
+            label="Clear recent files",
+            underline=0,
+            command=lambda srl=serializer, mnu=menu_file: self.clear_recent_files(srl, mnu))
+
+        logger.debug("Built Recent Files menu")
+
+    @staticmethod
+    def clear_recent_files(serializer, menu_file):
+        """ Creates or clears recent file list """
+        logger.debug("clearing recent files list: '%s'", menu_file)
+        serializer.save(menu_file, [])
+
+    def refresh_recent_menu(self):
+        """ Refresh recent menu on save/load of files """
+        self.recent_menu.delete(0, "end")
+        self.build_recent_menu()
+
+
+class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
+    """ Help menu items and functions """
+    def __init__(self, parent):
+        logger.debug("Initializing %s", self.__class__.__name__)
+        super().__init__(parent, tearoff=0)
+        self.root = parent.root
+        self.recources_menu = tk.Menu(self, tearoff=0)
+        self._branches_menu = tk.Menu(self, tearoff=0)
+        self.build()
+        logger.debug("Initialized %s", self.__class__.__name__)
+
+    def build(self):
+        """ Build the help menu """
+        logger.debug("Building Help menu")
+
+        self.add_command(label="Check for updates...",
+                         underline=0,
+                         command=lambda action="check": self.in_thread(action))
+        self.add_command(label="Update Faceswap...",
+                         underline=0,
+                         command=lambda action="update": self.in_thread(action))
+        self.add_separator()
+        self._build_recources_menu()
+        self.add_cascade(label="Resources", underline=0, menu=self.recources_menu)
+        self.add_separator()
+        self.add_command(label="Output System Information",
+                         underline=0,
+                         command=lambda action="output_sysinfo": self.in_thread(action))
+        logger.debug("Built help menu")
+
+    def _build_branches_menu(self):
+        """ Build branch selection menu.
+
+        Queries git for available branches and builds a menu based on output.
+
+        Returns
+        -------
+        bool
+            ``True`` if menu was successfully built otherwise ``False``
+        """
+        stdout = self._get_branches()
+        if stdout is None:
+            return False
+
+        branches = self._filter_branches(stdout)
+        if not branches:
+            return False
+
+        for branch in branches:
+            self._branches_menu.add_command(
+
+    def _build_recources_menu(self):
+        """ Build resources menu """
+        # pylint: disable=cell-var-from-loop
+        logger.debug("Building Resources Files menu")
+        for resource in _RESOURCES:
+            self.recources_menu.add_command(
+                label=resource[0],
+                command=lambda link=resource[1]: webbrowser.open_new(link))
+        logger.debug("Built resources menu")
+
+    def in_thread(self, action):
+        """ Perform selected action inside a thread """
+        logger.debug("Performing help action: %s", action)
+        thread = MultiThread(getattr(self, action), thread_count=1)
+        thread.start()
+        logger.debug("Performed help action: %s", action)
+
+    @staticmethod
+    def clear_console():
+        """ Clear the console window """
+        get_config().tk_vars["console_clear"].set(True)
+
+    def output_sysinfo(self):
+        """ Output system information to console """
+        logger.debug("Obtaining system information")
+        self.root.config(cursor="watch")
+        self.clear_console()
+        try:
+            from lib.sysinfo import sysinfo  # pylint:disable=import-outside-toplevel
+            info = sysinfo
+        except Exception as err:  # pylint:disable=broad-except
+            info = f"Error obtaining system info: {str(err)}"
+        self.clear_console()
+        logger.debug("Obtained system information: %s", info)
+        print(info)
+        self.root.config(cursor="")
+
+    def check(self):
+        """ Check for updates and clone repository """
+        logger.debug("Checking for updates...")
+        self.root.config(cursor="watch")
+        encoding = locale.getpreferredencoding()
+        logger.debug("Encoding: %s", encoding)
+        self.check_for_updates(encoding, check=True)
+        logger.info("NB: You are on release 1.0 of Faceswap, which is unlikely to receive further "
+                    "updates. You can upgrade to the latest Faceswap by visiting "
+                    "https://faceswap.dev")
+        self.root.config(cursor="")
+
+    def update(self):
+        """ Check for updates and clone repository """
+        logger.debug("Updating Faceswap...")
+        self.root.config(cursor="watch")
+        encoding = locale.getpreferredencoding()
+        logger.debug("Encoding: %s", encoding)
+        success = False
+        if self.check_for_updates(encoding):
+            success = self.do_update(encoding)
+        update_deps.main(is_gui=True)
+        if success:
+            logger.info("Please restart Faceswap to complete the update.")
+        logger.info("NB: You are on release 1.0 of Faceswap, which is unlikely to receive further "
+                    "updates. You can upgrade to the latest Faceswap by visiting "
+                    "https://faceswap.dev")
+        self.root.config(cursor="")
+
+    @staticmethod
+    def check_for_updates(encoding, check=False):
+        """ Check whether an update is required """
+        # Do the check
+        logger.info("Checking for updates...")
+        update = False
+        msg = ""
+        gitcmd = "git remote update && git status -uno"
+        with Popen(gitcmd, shell=True, stdout=PIPE, stderr=STDOUT, cwd=_WORKING_DIR) as cmd:
+            stdout, _ = cmd.communicate()
+            retcode = cmd.poll()
+        if retcode != 0:
+            msg = ("Git is not installed or you are not running a cloned repo. "
+                   "Unable to check for updates")
+        else:
+            chk = stdout.decode(encoding).splitlines()
+            for line in chk:
+                if line.lower().startswith("your branch is ahead"):
+                    msg = "Your branch is ahead of the remote repo. Not updating"
+                    break
+                if line.lower().startswith("your branch is up to date"):
+                    msg = "Faceswap is up to date."
+                    break
+                if line.lower().startswith("your branch is behind"):
+                    msg = "There are updates available"
+                    update = True
+                    break
+                if "have diverged" in line.lower():
+                    msg = "Your branch has diverged from the remote repo. Not updating"
+                    break
+        if not update or check:
+            logger.info(msg)
+        logger.debug("Checked for update. Update required: %s", update)
+        return update
+
+    @staticmethod
+    def do_update(encoding):
+        """ Update Faceswap """
+        logger.info("A new version is available. Updating...")
+        gitcmd = "git pull"
+        with Popen(gitcmd,
+                   shell=True,
+                   stdout=PIPE,
+                   stderr=STDOUT,
+                   bufsize=1,
+                   cwd=_WORKING_DIR) as cmd:
+            while True:
+                output = cmd.stdout.readline().decode(encoding)
+                if output == "" and cmd.poll() is not None:
+                    break
+                if output:
+                    logger.debug("'%s' output: '%s'", gitcmd, output.strip())
+                    print(output.strip())
+            retcode = cmd.poll()
+        logger.debug("'%s' returncode: %s", gitcmd, retcode)
+        if retcode != 0:
+            logger.info("An error occurred during update. return code: %s", retcode)
+            retval = False
+        else:
+            retval = True
+        return retval
+
+
+class TaskBar(ttk.Frame):  # pylint: disable=too-many-ancestors
+    """ Task bar buttons """
+    def __init__(self, parent):
+        super().__init__(parent)
+        self._config = get_config()
+        self.pack(side=tk.TOP, anchor=tk.W, fill=tk.X, expand=False)
+        self._btn_frame = ttk.Frame(self)
+        self._btn_frame.pack(side=tk.TOP, pady=2, anchor=tk.W, fill=tk.X, expand=False)
+
+        self._project_btns()
+        self._group_separator()
+        self._task_btns()
+        self._group_separator()
+        self._settings_btns()
+        self._section_separator()
+
+    def _project_btns(self):
+        frame = ttk.Frame(self._btn_frame)
+        frame.pack(side=tk.LEFT, anchor=tk.W, expand=False, padx=2)
+
+        for btntype in ("new", "load", "save", "save_as", "reload"):
+            logger.debug("Adding button: '%s'", btntype)
+
+            loader, kwargs = self._loader_and_kwargs(btntype)
+            cmd = getattr(self._config.project, loader)
+            btn = ttk.Button(frame,
+                             image=get_images().icons[btntype],
+                             command=lambda fn=cmd, kw=kwargs: fn(**kw))
+            btn.pack(side=tk.LEFT, anchor=tk.W)
+            hlp = self.set_help(btntype)
+            Tooltip(btn, text=hlp, wrap_length=200)
+
+    def _task_btns(self):
+        frame = ttk.Frame(self._btn_frame)
+        frame.pack(side=tk.LEFT, anchor=tk.W, expand=False, padx=2)
+
+        for loadtype in ("load", "save", "save_as", "clear", "reload"):
+            btntype = f"{loadtype}2"
+            logger.debug("Adding button: '%s'", btntype)
+
+            loader, kwargs = self._loader_and_kwargs(loadtype)
+            if loadtype == "load":
+                kwargs["current_tab"] = True
