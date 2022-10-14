@@ -7,6 +7,9 @@
 	object = 034f002b704f7c556f76c95991c283ce6d99e57f
 	path = module
 	type = extract module
+[map "84968fa8-9a70-30e6-b386-937383d77a30"]
+	object = 94f2fed847d9af5667b84c11a31599c080971566
+	type = extract tree + exclude
 [module "aeed691b-04a2-3155-a183-6fc01c44ba76"]
 	conflict = request-pull
 	path = module
