@@ -1,9 +1,0 @@
-- name: Get Snyk
-  uses: turtlebrowser/get-snyk@v1.0
-
-    - name: Install Snyk
-      id: snyk
-      uses: turtlebrowser/get-snyk@main
-
-    - name: Snyk version
-      run: echo "${{ steps.snyk.outputs.version }}"
