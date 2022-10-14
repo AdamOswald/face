@@ -5,7 +5,8 @@
 	pull = squash always
 	ref = if refs/heads/master sync refs/heads/main
 	url = agnostic://gh/536692186
-[map "aeefed64-77d3-3b47-9194-b350c321aa33"]
+[map "f6dda146-a486-39b0-aa45-103672d055e6"]
 	object = 961a4710bc1f7ec00a8b4275fc939cbb4b1e4274
 	path = module
+	stage = sync
 	type = extract module
