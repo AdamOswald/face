@@ -1,0 +1,9 @@
+[map "474d2191-de7a-30fe-9e30-73321d3695f9"]
+	object = 2fa8e302ac2f8b00f38640fc7ca6630fe41237e0
+	type = extract tree + exclude
+[map "021b53b9-c36a-3abc-bdbf-c3ddfd5e1744"]
+	object = fce3986eb33df121ba3bdb0c5f6a7b252c8452ba
+	type = extract tree + exclude
+[map "ca233f88-a386-3c0c-9019-2a22b9e4ca91"]
+	object = efef955017753967d201a19bfc2d1b175ea09434
+	type = extract tree + exclude
