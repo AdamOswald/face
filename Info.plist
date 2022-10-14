@@ -323,3 +323,13 @@ https://github.com/TheAdam-Verse/tes/blob/main/Copy%20of%20MIDI%202.txt?raw=true
 
 BNDLband
 
+version: 0.2.3
+files:
+  - url: DAWG-Setup-0.2.3.exe
+    sha512: INBSUFvGQo6v5UwjbRgeGQEdXuc4KjxZjmgPiGzNr19/z6mrmuyDUAydyaXHVc9s5C647iti+RrXw1yR+k6rhw==
+    size: 47159793
+    isAdminRightsRequired: true
+path: DAWG-Setup-0.2.3.exe
+sha512: INBSUFvGQo6v5UwjbRgeGQEdXuc4KjxZjmgPiGzNr19/z6mrmuyDUAydyaXHVc9s5C647iti+RrXw1yR+k6rhw==
+releaseDate: '2020-03-05T14:15:13.004Z'
+
