@@ -697,3 +697,2929 @@ releaseDate: '2020-03-05T14:15:13.004Z'
   ]
 }
 
+5 AI Music Apps You Can Use as a Melody Generator
+AI Lyrics, Music, and Song Creation Apps | AUDOIR, LLC
+Home - Amper Score
+https://futureai.guru/technologies/brian-simulator-ii-open-source-agi-toolkit/
+https://futureaiguru.com/BrainSimDownload.aspx
+https://www.betabound.com/depix-private-beta/
+https://github.com/hostedposted/BlooketHackGUI
+https://github.com/hostedposted/jackbox
+https://github.com/hostedposted/Blooket-Hacks
+https://imageupscaler.com/ai-image-generator/
+
+
+5 AI Music Apps You Can Use as a Melody Generator
+
+AI Lyrics, Music, and Song Creation Apps | AUDOIR, LLC
+
+Home - Amper Score
+
+https://futureai.guru/technologies/brian-simulator-ii-open-source-agi-toolkit/
+
+https://futureaiguru.com/BrainSimDownload.aspx
+
+https://www.betabound.com/depix-private-beta/
+
+https://github.com/hostedposted/BlooketHackGUI
+
+https://github.com/hostedposted/jackbox
+
+https://github.com/hostedposted/Blooket-Hacks
+
+https://imageupscaler.com/ai-image-generator/
+
+
+https://imageupscaler.com/ai-image-generator/
+
+
+Doctor Who, God, Undertale, Megalovania, Genshin Impact, Sans, The Doctor, Aether, Fortnite, Battle Royale, FNBR, Fortnite Battle Royale, Zero, Point, Zero Point, Fortnite Zero Point, Nexus, Celestial, Galactic, Galaxy, Geño, Black Hole, Time Vortex, SuperNova, Super Nova, Rift, Rift Butterfly, Energy, Zero Point Energy, ZPE, Wormhole, Vortex, Cube, Cube Energy, Kevin, Kevin The Cube, Dark, Darkness, Dark Energy, Darkness Energy, The Last Reality, TLR, Zero Bloom, Bloom, Reality, Reality Tree, Chroma, Flame, Chroma Flame, Chroma Energy, Dark Matter, Matter, Irminsul, Irminsul Tree, Irminsul Branch, Irminsul Tree Branch, Irminsul Roots, Irminsul Root, Irminsul Tree Roots, Irminsul Tree Root, Ley Line, Ley, Music, Audio, MP3, mp3, WAV, wav, Image, Picture, JPG, Midi instrument, Midi File MID, mid, MIDI, midi, Sci-Fi, Science, Space, AI, Technology
+Doctor Who, God, Undertale, Megalovania, Genshin Impact, Sans, The Doctor, Aether, Fortnite, Battle Royale, FNBR, Fortnite Battle Royale, Zero, Point, Zero Point, Fortnite Zero Point, Nexus, Celestial, Galactic, Galaxy, Geño, Black Hole, Time Vortex, SuperNova, Super Nova, Rift, Rift Butterfly, Energy, Zero Point Energy, ZPE, Wormhole, Vortex, Cube, Cube Energy, Kevin, Kevin The Cube, Dark, Darkness, Dark Energy, Darkness Energy, The Last Reality, TLR, Zero Bloom, Bloom, Reality, Reality Tree, Chroma, Flame, Chroma Flame, Chroma Energy, Dark Matter, Matter, Irminsul, Irminsul Tree, Irminsul Branch, Irminsul Tree Branch, Irminsul Roots, Irminsul Root, Irminsul Tree Roots, Irminsul Tree Root, Ley Line, Ley, Music, Audio, MP3, mp3, WAV, wav, Image, Picture, JPG, Midi instrument, Midi File MID, mid, MIDI, midi, Sci-Fi, Science, Space, AI, Technology.jpg
+
+Doctor Who, God, Undertale, Megalovania, Genshin Impact, Sans, The Doctor, Aether, Fortnite, Battle Royale, FNBR, Fortnite Battle Royale, Zero, Point, Zero Point, Fortnite Zero Point, Nexus, Celestial, Galactic, Galaxy, Geño, Black Hole, Time Vortex, SuperNova, Super Nova, Rift, Rift Butterfly, Energy, Zero Point Energy, ZPE, Wormhole, Vortex, Cube, Cube Energy, Kevin, Kevin The Cube, Dark, Darkness, Dark Energy, Darkness Energy, The Last Reality, TLR, Zero Bloom, Bloom, Reality, Reality Tree, Chroma, Flame, Chroma Flame, Chroma Energy, Dark Matter, Matter, Irminsul, Irminsul Tree, Irminsul Branch, Irminsul Tree Branch, Irminsul Roots, Irminsul Root, Irminsul Tree Roots, Irminsul Tree Root, Ley Line, Ley, Music, Audio, MP3, mp3, WAV, wav, Image, Picture, JPG, Midi instrument, Midi File MID, mid, MIDI, midi, Sci-Fi, Science, Space, AI, Technology
+
+Doctor Who, God, Undertale, Megalovania, Genshin Impact, Sans, The Doctor, Aether, Fortnite, Battle Royale, FNBR, Fortnite Battle Royale, Zero, Point, Zero Point, Fortnite Zero Point, Nexus, Celestial, Galactic, Galaxy, Geño, Black Hole, Time Vortex, SuperNova, Super Nova, Rift, Rift Butterfly, Energy, Zero Point Energy, ZPE, Wormhole, Vortex, Cube, Cube Energy, Kevin, Kevin The Cube, Dark, Darkness, Dark Energy, Darkness Energy, The Last Reality, TLR, Zero Bloom, Bloom, Reality, Reality Tree, Chroma, Flame, Chroma Flame, Chroma Energy, Dark Matter, Matter, Irminsul, Irminsul Tree, Irminsul Branch, Irminsul Tree Branch, Irminsul Roots, Irminsul Root, Irminsul Tree Roots, Irminsul Tree Root, Ley Line, Ley, Music, Audio, MP3, mp3, WAV, wav, Image, Picture, JPG, Midi instrument, Midi File MID, mid, MIDI, midi, Sci-Fi, Science, Space, AI, Technology.jpg
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+
+data["reviewText"].iloc[1]
+
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+
+preprocess_reviews(data)
+data.head()
+
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+
+joblib.dump(model, "model.pkl", compress=True)
+
+%run xgboost_automated_github/src/xgboost_automated_github.py
+
+---------------------------------------------------------------------------
+DataApiError                              Traceback (most recent call last)
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in &lt;module&gt;
+     58 
+     59 config = load_model_config()
+---&gt; 60 xgb_path, xgb_obj = load_model(config)
+     61 assert_model_md5(xgb_path)
+     62 
+
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in load_model(config)
+     35     &quot;&quot;&quot;Loads the model object from the file at model_filepath key in config dict&quot;&quot;&quot;
+     36     model_path = config[&quot;model_filepath&quot;]
+---&gt; 37     model_file = client.file(model_path).getFile().name
+     38     model_obj = joblib.load(model_file)
+     39     return model_file, model_obj
+
+~/opt/anaconda3/lib/python3.8/site-packages/Algorithmia/datafile.py in getFile(self)
+     35         exists, error = self.existsWithError()
+     36         if not exists:
+---&gt; 37             raise DataApiError(&#39;unable to get file {} - {}&#39;.format(self.path, error))
+     38         # Make HTTP get request
+     39         response = self.client.getHelper(self.url)
+
+DataApiError: unable to get file asli/xgboost_automated_github/model_1efcc5e311207268e450d6018debe7012f182e71.pkl - authorization required
+
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+
+from string import punctuation
+from nltk.corpus import stopwords
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+
+data["reviewText"].iloc[1]
+
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+
+preprocess_reviews(data)
+data.head()
+
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+
+joblib.dump(model, "model.pkl", compress=True)
+
+%run xgboost_automated/src/xgboost_automated.py
+
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Sentiment Analysis with XGBoost on Algorithmia"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 1. Train, evaluate and test XGBoost model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.model_selection import train_test_split, RandomizedSearchCV\n",
+    "from sklearn.metrics import accuracy_score\n",
+    "from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer\n",
+    "from sklearn.pipeline import Pipeline\n",
+    "\n",
+    "from string import punctuation\n",
+    "from nltk.corpus import stopwords\n",
+    "\n",
+    "from xgboost import XGBClassifier\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import joblib"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Load the training data\n",
+    "Let's load our training data, take a look at a few rows and one of the review texts in detail."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "data = pd.read_csv(\"./data/amazon_musical_reviews/Musical_instruments_reviews.csv\")\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "data[\"reviewText\"].iloc[1]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Preprocessing\n",
+    "Time to process our texts! Basically, we'll:\n",
+    "- Remove the English stopwords\n",
+    "- Remove punctuations\n",
+    "- Drop unused columns"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "import nltk\n",
+    "nltk.download('stopwords')\n",
+    "\n",
+    "def threshold_ratings(data):\n",
+    "    def threshold_overall_rating(rating):\n",
+    "        return 0 if int(rating)<=3 else 1\n",
+    "    data[\"overall\"] = data[\"overall\"].apply(threshold_overall_rating)\n",
+    "\n",
+    "def remove_stopwords_punctuation(data):\n",
+    "    data[\"review\"] = data[\"reviewText\"] + data[\"summary\"]\n",
+    "\n",
+    "    puncs = list(punctuation)\n",
+    "    stops = stopwords.words(\"english\")\n",
+    "\n",
+    "    def remove_stopwords_in_str(input_str):\n",
+    "        filtered = [char for char in str(input_str).split() if char not in stops]\n",
+    "        return ' '.join(filtered)\n",
+    "\n",
+    "    def remove_punc_in_str(input_str):\n",
+    "        filtered = [char for char in input_str if char not in puncs]\n",
+    "        return ''.join(filtered)\n",
+    "\n",
+    "    def remove_stopwords_in_series(input_series):\n",
+    "        text_clean = []\n",
+    "        for i in range(len(input_series)):\n",
+    "            text_clean.append(remove_stopwords_in_str(input_series[i]))\n",
+    "        return text_clean\n",
+    "\n",
+    "    def remove_punc_in_series(input_series):\n",
+    "        text_clean = []\n",
+    "        for i in range(len(input_series)):\n",
+    "            text_clean.append(remove_punc_in_str(input_series[i]))\n",
+    "        return text_clean\n",
+    "\n",
+    "    data[\"review\"] = remove_stopwords_in_series(data[\"review\"].str.lower())\n",
+    "    data[\"review\"] = remove_punc_in_series(data[\"review\"].str.lower())\n",
+    "\n",
+    "def drop_unused_colums(data):\n",
+    "    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', \"reviewText\", \"summary\"], axis=1, inplace=True)\n",
+    "\n",
+    "def preprocess_reviews(data):\n",
+    "    remove_stopwords_punctuation(data)\n",
+    "    threshold_ratings(data)\n",
+    "    drop_unused_colums(data)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "preprocess_reviews(data)\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Split our training and test sets"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "rand_seed = 42\n",
+    "X = data[\"review\"]\n",
+    "y = data[\"overall\"]\n",
+    "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Mini randomized search\n",
+    "Let's set up a very basic cross-validated randomized search over parameter settings."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "params = {\"max_depth\": range(9,12), \"min_child_weight\": range(5,8)}\n",
+    "rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Pipeline to vectorize, transform and fit\n",
+    "Time to vectorize our data, transform it and then fit our model to it.\n",
+    "To be able to feed the text data as numeric values to our model, we will first convert our texts into a matrix of token counts using a CountVectorizer. Then we will convert the count matrix to a normalized tf-idf (term-frequency times inverse document-frequency) representation. Using this transformer, we will be scaling down the impact of tokens that occur very frequently, because they convey less information to us. On the contrary, we will be scaling up the impact of the tokens that occur in a small fraction of the training data because they are more informative to us."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "model  = Pipeline([\n",
+    "    ('vect', CountVectorizer()),\n",
+    "    ('tfidf', TfidfTransformer()),\n",
+    "    ('model', rand_search_cv)\n",
+    "])\n",
+    "model.fit(X_train, y_train)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Predict and calculate accuracy"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "predictions = model.predict(X_test)\n",
+    "acc = accuracy_score(y_test, predictions)\n",
+    "print(f\"Model Accuracy: {round(acc * 100, 2)}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2. Save XGBoost model to a file\n",
+    "We should save the created model object to a local path. The Github action will then take the model object from this path and upload it to Algorithmia."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "joblib.dump(model, \"model.pkl\", compress=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 3. Test our serving (Algorithm) code\n",
+    "\n",
+    "We will now test our algorithm code, ie. **`xgboost_automated_github.py`** script, by simply executing it with the `%run` macro. The script will begin its execution through our `if __name__ == \"__main__\"` line. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [
+    {
+     "output_type": "error",
+     "ename": "DataApiError",
+     "evalue": "unable to get file asli/xgboost_automated_github/model_1efcc5e311207268e450d6018debe7012f182e71.pkl - authorization required",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mDataApiError\u001b[0m                              Traceback (most recent call last)",
+      "\u001b[0;32m~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py\u001b[0m in \u001b[0;36m&lt;module&gt;\u001b[0;34m\u001b[0m\n\u001b[1;32m     58\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     59\u001b[0m \u001b[0mconfig\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mload_model_config\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---&gt; 60\u001b[0;31m \u001b[0mxgb_path\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mxgb_obj\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mload_model\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mconfig\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     61\u001b[0m \u001b[0massert_model_md5\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mxgb_path\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     62\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py\u001b[0m in \u001b[0;36mload_model\u001b[0;34m(config)\u001b[0m\n\u001b[1;32m     35\u001b[0m     \u001b[0;34m&quot;&quot;&quot;Loads the model object from the file at model_filepath key in config dict&quot;&quot;&quot;\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     36\u001b[0m     \u001b[0mmodel_path\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mconfig\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m&quot;model_filepath&quot;\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---&gt; 37\u001b[0;31m     \u001b[0mmodel_file\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mclient\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mfile\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mmodel_path\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mgetFile\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mname\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     38\u001b[0m     \u001b[0mmodel_obj\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mjoblib\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mload\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mmodel_file\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     39\u001b[0m     \u001b[0;32mreturn\u001b[0m \u001b[0mmodel_file\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mmodel_obj\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/opt/anaconda3/lib/python3.8/site-packages/Algorithmia/datafile.py\u001b[0m in \u001b[0;36mgetFile\u001b[0;34m(self)\u001b[0m\n\u001b[1;32m     35\u001b[0m         \u001b[0mexists\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0merror\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mexistsWithError\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     36\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0;32mnot\u001b[0m \u001b[0mexists\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---&gt; 37\u001b[0;31m             \u001b[0;32mraise\u001b[0m \u001b[0mDataApiError\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m&#39;unable to get file {} - {}&#39;\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mformat\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mpath\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0merror\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     38\u001b[0m         \u001b[0;31m# Make HTTP get request\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     39\u001b[0m         \u001b[0mresponse\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mclient\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mgetHelper\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0murl\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mDataApiError\u001b[0m: unable to get file asli/xgboost_automated_github/model_1efcc5e311207268e450d6018debe7012f182e71.pkl - authorization required"
+     ]
+    }
+   ],
+   "source": [
+    "%run xgboost_automated_github/src/xgboost_automated_github.py"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Final checks before committing this notebook\n",
+    "\n",
+    "- Make sure `xgboost_automated_github.py` file is in good shape to be pushed to Algorithmia.\n",
+    "\n",
+    "- Make sure Algorithmia API Key is not committed and pushed in any file!"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.3-final"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
+
+
+Sentiment Analysis with XGBoost on Algorithmia
+1. Train, evaluate and test XGBoost model
+In [ ]:
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+
+from string import punctuation
+from nltk.corpus import stopwords
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+Load the training data
+
+Let's load our training data, take a look at a few rows and one of the review texts in detail.
+
+In [ ]:
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+In [ ]:
+data["reviewText"].iloc[1]
+Preprocessing
+
+Time to process our texts! Basically, we'll:
+
+Remove the English stopwords
+Remove punctuations
+Drop unused columns
+In [ ]:
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+In [ ]:
+preprocess_reviews(data)
+data.head()
+Split our training and test sets
+In [ ]:
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+Mini randomized search
+
+Let's set up a very basic cross-validated randomized search over parameter settings.
+
+In [ ]:
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+Pipeline to vectorize, transform and fit
+
+Time to vectorize our data, transform it and then fit our model to it. To be able to feed the text data as numeric values to our model, we will first convert our texts into a matrix of token counts using a CountVectorizer. Then we will convert the count matrix to a normalized tf-idf (term-frequency times inverse document-frequency) representation. Using this transformer, we will be scaling down the impact of tokens that occur very frequently, because they convey less information to us. On the contrary, we will be scaling up the impact of the tokens that occur in a small fraction of the training data because they are more informative to us.
+
+In [ ]:
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+Predict and calculate accuracy
+In [ ]:
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+2. Save XGBoost model to a file
+
+We should save the created model object to a local path. The Github action will then take the model object from this path and upload it to Algorithmia.
+
+In [ ]:
+joblib.dump(model, "model.pkl", compress=True)
+3. Test our serving (Algorithm) code
+
+We will now test our algorithm code, ie. xgboost_automated_github.py script, by simply executing it with the %run macro. The script will begin its execution through our if __name__ == "__main__" line.
+
+In [1]:
+%run xgboost_automated_github/src/xgboost_automated_github.py
+---------------------------------------------------------------------------
+DataApiError                              Traceback (most recent call last)
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in &lt;module&gt;
+     58 
+     59 config = load_model_config()
+---&gt; 60 xgb_path, xgb_obj = load_model(config)
+     61 assert_model_md5(xgb_path)
+     62 
+
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in load_model(config)
+     35     &quot;&quot;&quot;Loads the model object from the file at model_filepath key in config dict&quot;&quot;&quot;
+     36     model_path = config[&quot;model_filepath&quot;]
+---&gt; 37     model_file = client.file(model_path).getFile().name
+     38     model_obj = joblib.load(model_file)
+     39     return model_file, model_obj
+
+~/opt/anaconda3/lib/python3.8/site-packages/Algorithmia/datafile.py in getFile(self)
+     35         exists, error = self.existsWithError()
+     36         if not exists:
+---&gt; 37             raise DataApiError(&#39;unable to get file {} - {}&#39;.format(self.path, error))
+     38         # Make HTTP get request
+     39         response = self.client.getHelper(self.url)
+
+DataApiError: unable to get file asli/xgboost_automated_github/model_1efcc5e311207268e450d6018debe7012f182e71.pkl - authorization required
+Final checks before committing this notebook
+
+Make sure xgboost_automated_github.py file is in good shape to be pushed to Algorithmia.
+
+Make sure Algorithmia API Key is not committed and pushed in any file!
+
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+
+from string import punctuation
+from nltk.corpus import stopwords
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+
+data["reviewText"].iloc[1]
+
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+
+preprocess_reviews(data)
+data.head()
+
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+
+joblib.dump(model, "model.pkl", compress=True)
+
+%run xgboost_automated_github/src/xgboost_automated_github.py
+
+---------------------------------------------------------------------------
+DataApiError                              Traceback (most recent call last)
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in &lt;module&gt;
+     58 
+     59 config = load_model_config()
+---&gt; 60 xgb_path, xgb_obj = load_model(config)
+     61 assert_model_md5(xgb_path)
+     62 
+
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in load_model(config)
+     35     &quot;&quot;&quot;Loads the model object from the file at model_filepath key in config dict&quot;&quot;&quot;
+     36     model_path = config[&quot;model_filepath&quot;]
+---&gt; 37     model_file = client.file(model_path).getFile().name
+     38     model_obj = joblib.load(model_file)
+     39     return model_file, model_obj
+
+~/opt/anaconda3/lib/python3.8/site-packages/Algorithmia/datafile.py in getFile(self)
+     35         exists, error = self.existsWithError()
+     36         if not exists:
+---&gt; 37             raise DataApiError(&#39;unable to get file {} - {}&#39;.format(self.path, error))
+     38         # Make HTTP get request
+     39         response = self.client.getHelper(self.url)
+
+DataApiError: unable to get file asli/xgboost_automated_github/model_1efcc5e311207268e450d6018debe7012f182e71.pkl - authorization required
+
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Sentiment Analysis with XGBoost on Algorithmia"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 1. Train, evaluate and test XGBoost model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.model_selection import train_test_split, RandomizedSearchCV\n",
+    "from sklearn.metrics import accuracy_score\n",
+    "from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer\n",
+    "from sklearn.pipeline import Pipeline\n",
+    "\n",
+    "from string import punctuation\n",
+    "from nltk.corpus import stopwords\n",
+    "\n",
+    "from xgboost import XGBClassifier\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import joblib"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Load the training data\n",
+    "Let's load our training data, take a look at a few rows and one of the review texts in detail."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "data = pd.read_csv(\"./data/amazon_musical_reviews/Musical_instruments_reviews.csv\")\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "data[\"reviewText\"].iloc[1]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Preprocessing\n",
+    "Time to process our texts! Basically, we'll:\n",
+    "- Remove the English stopwords\n",
+    "- Remove punctuations\n",
+    "- Drop unused columns"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "import nltk\n",
+    "nltk.download('stopwords')\n",
+    "\n",
+    "def threshold_ratings(data):\n",
+    "    def threshold_overall_rating(rating):\n",
+    "        return 0 if int(rating)<=3 else 1\n",
+    "    data[\"overall\"] = data[\"overall\"].apply(threshold_overall_rating)\n",
+    "\n",
+    "def remove_stopwords_punctuation(data):\n",
+    "    data[\"review\"] = data[\"reviewText\"] + data[\"summary\"]\n",
+    "\n",
+    "    puncs = list(punctuation)\n",
+    "    stops = stopwords.words(\"english\")\n",
+    "\n",
+    "    def remove_stopwords_in_str(input_str):\n",
+    "        filtered = [char for char in str(input_str).split() if char not in stops]\n",
+    "        return ' '.join(filtered)\n",
+    "\n",
+    "    def remove_punc_in_str(input_str):\n",
+    "        filtered = [char for char in input_str if char not in puncs]\n",
+    "        return ''.join(filtered)\n",
+    "\n",
+    "    def remove_stopwords_in_series(input_series):\n",
+    "        text_clean = []\n",
+    "        for i in range(len(input_series)):\n",
+    "            text_clean.append(remove_stopwords_in_str(input_series[i]))\n",
+    "        return text_clean\n",
+    "\n",
+    "    def remove_punc_in_series(input_series):\n",
+    "        text_clean = []\n",
+    "        for i in range(len(input_series)):\n",
+    "            text_clean.append(remove_punc_in_str(input_series[i]))\n",
+    "        return text_clean\n",
+    "\n",
+    "    data[\"review\"] = remove_stopwords_in_series(data[\"review\"].str.lower())\n",
+    "    data[\"review\"] = remove_punc_in_series(data[\"review\"].str.lower())\n",
+    "\n",
+    "def drop_unused_colums(data):\n",
+    "    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', \"reviewText\", \"summary\"], axis=1, inplace=True)\n",
+    "\n",
+    "def preprocess_reviews(data):\n",
+    "    remove_stopwords_punctuation(data)\n",
+    "    threshold_ratings(data)\n",
+    "    drop_unused_colums(data)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "preprocess_reviews(data)\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Split our training and test sets"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "rand_seed = 42\n",
+    "X = data[\"review\"]\n",
+    "y = data[\"overall\"]\n",
+    "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Mini randomized search\n",
+    "Let's set up a very basic cross-validated randomized search over parameter settings."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "params = {\"max_depth\": range(9,12), \"min_child_weight\": range(5,8)}\n",
+    "rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Pipeline to vectorize, transform and fit\n",
+    "Time to vectorize our data, transform it and then fit our model to it.\n",
+    "To be able to feed the text data as numeric values to our model, we will first convert our texts into a matrix of token counts using a CountVectorizer. Then we will convert the count matrix to a normalized tf-idf (term-frequency times inverse document-frequency) representation. Using this transformer, we will be scaling down the impact of tokens that occur very frequently, because they convey less information to us. On the contrary, we will be scaling up the impact of the tokens that occur in a small fraction of the training data because they are more informative to us."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "model  = Pipeline([\n",
+    "    ('vect', CountVectorizer()),\n",
+    "    ('tfidf', TfidfTransformer()),\n",
+    "    ('model', rand_search_cv)\n",
+    "])\n",
+    "model.fit(X_train, y_train)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Predict and calculate accuracy"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "predictions = model.predict(X_test)\n",
+    "acc = accuracy_score(y_test, predictions)\n",
+    "print(f\"Model Accuracy: {round(acc * 100, 2)}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2. Save XGBoost model to a file\n",
+    "We should save the created model object to a local path. The Github action will then take the model object from this path and upload it to Algorithmia."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "joblib.dump(model, \"model.pkl\", compress=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 3. Test our serving (Algorithm) code\n",
+    "\n",
+    "We will now test our algorithm code, ie. **`xgboost_automated.py`** script, by simply executing it with the `%run` macro. The script will begin its execution through our `if __name__ == \"__main__\"` line. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "%run xgboost_automated/src/xgboost_automated.py"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Final checks before committing this notebook\n",
+    "\n",
+    "- Make sure `xgboost_automated.py` file is in good shape to be pushed to Algorithmia.\n",
+    "\n",
+    "- Make sure Algorithmia API Key is not committed and pushed in any file!"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.3-final"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
+
+Sentiment Analysis with XGBoost on Algorithmia
+1. Train, evaluate and test XGBoost model
+In [ ]:
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+
+from string import punctuation
+from nltk.corpus import stopwords
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+Load the training data
+
+Let's load our training data, take a look at a few rows and one of the review texts in detail.
+
+In [ ]:
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+In [ ]:
+data["reviewText"].iloc[1]
+Preprocessing
+
+Time to process our texts! Basically, we'll:
+
+Remove the English stopwords
+Remove punctuations
+Drop unused columns
+In [ ]:
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+In [ ]:
+preprocess_reviews(data)
+data.head()
+Split our training and test sets
+In [ ]:
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+Mini randomized search
+
+Let's set up a very basic cross-validated randomized search over parameter settings.
+
+In [ ]:
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+Pipeline to vectorize, transform and fit
+
+Time to vectorize our data, transform it and then fit our model to it. To be able to feed the text data as numeric values to our model, we will first convert our texts into a matrix of token counts using a CountVectorizer. Then we will convert the count matrix to a normalized tf-idf (term-frequency times inverse document-frequency) representation. Using this transformer, we will be scaling down the impact of tokens that occur very frequently, because they convey less information to us. On the contrary, we will be scaling up the impact of the tokens that occur in a small fraction of the training data because they are more informative to us.
+
+In [ ]:
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+Predict and calculate accuracy
+In [ ]:
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+2. Save XGBoost model to a file
+
+We should save the created model object to a local path. The Github action will then take the model object from this path and upload it to Algorithmia.
+
+In [ ]:
+joblib.dump(model, "model.pkl", compress=True)
+3. Test our serving (Algorithm) code
+
+We will now test our algorithm code, ie. xgboost_automated.py script, by simply executing it with the %run macro. The script will begin its execution through our if __name__ == "__main__" line.
+
+In [ ]:
+%run xgboost_automated/src/xgboost_automated.py
+Final checks before committing this notebook
+
+Make sure xgboost_automated.py file is in good shape to be pushed to Algorithmia.
+
+Make sure Algorithmia API Key is not committed and pushed in any file!
+
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+
+from string import punctuation
+from nltk.corpus import stopwords
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+
+data["reviewText"].iloc[1]
+
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+
+preprocess_reviews(data)
+data.head()
+
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+
+joblib.dump(model, "model.pkl", compress=True)
+
+%run xgboost_automated/src/xgboost_automated.py
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+
+data["reviewText"].iloc[1]
+
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+
+preprocess_reviews(data)
+data.head()
+
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+
+joblib.dump(model, "model.pkl", compress=True)
+
+%run xgboost_automated_github/src/xgboost_automated_github.py
+
+---------------------------------------------------------------------------
+DataApiError                              Traceback (most recent call last)
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in &lt;module&gt;
+     58 
+     59 config = load_model_config()
+---&gt; 60 xgb_path, xgb_obj = load_model(config)
+     61 assert_model_md5(xgb_path)
+     62 
+
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in load_model(config)
+     35     &quot;&quot;&quot;Loads the model object from the file at model_filepath key in config dict&quot;&quot;&quot;
+     36     model_path = config[&quot;model_filepath&quot;]
+---&gt; 37     model_file = client.file(model_path).getFile().name
+     38     model_obj = joblib.load(model_file)
+     39     return model_file, model_obj
+
+~/opt/anaconda3/lib/python3.8/site-packages/Algorithmia/datafile.py in getFile(self)
+     35         exists, error = self.existsWithError()
+     36         if not exists:
+---&gt; 37             raise DataApiError(&#39;unable to get file {} - {}&#39;.format(self.path, error))
+     38         # Make HTTP get request
+     39         response = self.client.getHelper(self.url)
+
+DataApiError: unable to get file asli/xgboost_automated_github/model_1efcc5e311207268e450d6018debe7012f182e71.pkl - authorization required
+
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+
+from string import punctuation
+from nltk.corpus import stopwords
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+
+data["reviewText"].iloc[1]
+
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+
+preprocess_reviews(data)
+data.head()
+
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+
+joblib.dump(model, "model.pkl", compress=True)
+
+%run xgboost_automated/src/xgboost_automated.py
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Sentiment Analysis with XGBoost on Algorithmia"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 1. Train, evaluate and test XGBoost model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.model_selection import train_test_split, RandomizedSearchCV\n",
+    "from sklearn.metrics import accuracy_score\n",
+    "from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer\n",
+    "from sklearn.pipeline import Pipeline\n",
+    "\n",
+    "from string import punctuation\n",
+    "from nltk.corpus import stopwords\n",
+    "\n",
+    "from xgboost import XGBClassifier\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import joblib"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Load the training data\n",
+    "Let's load our training data, take a look at a few rows and one of the review texts in detail."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "data = pd.read_csv(\"./data/amazon_musical_reviews/Musical_instruments_reviews.csv\")\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "data[\"reviewText\"].iloc[1]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Preprocessing\n",
+    "Time to process our texts! Basically, we'll:\n",
+    "- Remove the English stopwords\n",
+    "- Remove punctuations\n",
+    "- Drop unused columns"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "import nltk\n",
+    "nltk.download('stopwords')\n",
+    "\n",
+    "def threshold_ratings(data):\n",
+    "    def threshold_overall_rating(rating):\n",
+    "        return 0 if int(rating)<=3 else 1\n",
+    "    data[\"overall\"] = data[\"overall\"].apply(threshold_overall_rating)\n",
+    "\n",
+    "def remove_stopwords_punctuation(data):\n",
+    "    data[\"review\"] = data[\"reviewText\"] + data[\"summary\"]\n",
+    "\n",
+    "    puncs = list(punctuation)\n",
+    "    stops = stopwords.words(\"english\")\n",
+    "\n",
+    "    def remove_stopwords_in_str(input_str):\n",
+    "        filtered = [char for char in str(input_str).split() if char not in stops]\n",
+    "        return ' '.join(filtered)\n",
+    "\n",
+    "    def remove_punc_in_str(input_str):\n",
+    "        filtered = [char for char in input_str if char not in puncs]\n",
+    "        return ''.join(filtered)\n",
+    "\n",
+    "    def remove_stopwords_in_series(input_series):\n",
+    "        text_clean = []\n",
+    "        for i in range(len(input_series)):\n",
+    "            text_clean.append(remove_stopwords_in_str(input_series[i]))\n",
+    "        return text_clean\n",
+    "\n",
+    "    def remove_punc_in_series(input_series):\n",
+    "        text_clean = []\n",
+    "        for i in range(len(input_series)):\n",
+    "            text_clean.append(remove_punc_in_str(input_series[i]))\n",
+    "        return text_clean\n",
+    "\n",
+    "    data[\"review\"] = remove_stopwords_in_series(data[\"review\"].str.lower())\n",
+    "    data[\"review\"] = remove_punc_in_series(data[\"review\"].str.lower())\n",
+    "\n",
+    "def drop_unused_colums(data):\n",
+    "    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', \"reviewText\", \"summary\"], axis=1, inplace=True)\n",
+    "\n",
+    "def preprocess_reviews(data):\n",
+    "    remove_stopwords_punctuation(data)\n",
+    "    threshold_ratings(data)\n",
+    "    drop_unused_colums(data)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "preprocess_reviews(data)\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Split our training and test sets"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "rand_seed = 42\n",
+    "X = data[\"review\"]\n",
+    "y = data[\"overall\"]\n",
+    "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Mini randomized search\n",
+    "Let's set up a very basic cross-validated randomized search over parameter settings."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "params = {\"max_depth\": range(9,12), \"min_child_weight\": range(5,8)}\n",
+    "rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Pipeline to vectorize, transform and fit\n",
+    "Time to vectorize our data, transform it and then fit our model to it.\n",
+    "To be able to feed the text data as numeric values to our model, we will first convert our texts into a matrix of token counts using a CountVectorizer. Then we will convert the count matrix to a normalized tf-idf (term-frequency times inverse document-frequency) representation. Using this transformer, we will be scaling down the impact of tokens that occur very frequently, because they convey less information to us. On the contrary, we will be scaling up the impact of the tokens that occur in a small fraction of the training data because they are more informative to us."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "model  = Pipeline([\n",
+    "    ('vect', CountVectorizer()),\n",
+    "    ('tfidf', TfidfTransformer()),\n",
+    "    ('model', rand_search_cv)\n",
+    "])\n",
+    "model.fit(X_train, y_train)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Predict and calculate accuracy"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "predictions = model.predict(X_test)\n",
+    "acc = accuracy_score(y_test, predictions)\n",
+    "print(f\"Model Accuracy: {round(acc * 100, 2)}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2. Save XGBoost model to a file\n",
+    "We should save the created model object to a local path. The Github action will then take the model object from this path and upload it to Algorithmia."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "joblib.dump(model, \"model.pkl\", compress=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 3. Test our serving (Algorithm) code\n",
+    "\n",
+    "We will now test our algorithm code, ie. **`xgboost_automated_github.py`** script, by simply executing it with the `%run` macro. The script will begin its execution through our `if __name__ == \"__main__\"` line. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [
+    {
+     "output_type": "error",
+     "ename": "DataApiError",
+     "evalue": "unable to get file asli/xgboost_automated_github/model_1efcc5e311207268e450d6018debe7012f182e71.pkl - authorization required",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mDataApiError\u001b[0m                              Traceback (most recent call last)",
+      "\u001b[0;32m~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py\u001b[0m in \u001b[0;36m&lt;module&gt;\u001b[0;34m\u001b[0m\n\u001b[1;32m     58\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     59\u001b[0m \u001b[0mconfig\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mload_model_config\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---&gt; 60\u001b[0;31m \u001b[0mxgb_path\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mxgb_obj\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mload_model\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mconfig\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     61\u001b[0m \u001b[0massert_model_md5\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mxgb_path\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     62\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py\u001b[0m in \u001b[0;36mload_model\u001b[0;34m(config)\u001b[0m\n\u001b[1;32m     35\u001b[0m     \u001b[0;34m&quot;&quot;&quot;Loads the model object from the file at model_filepath key in config dict&quot;&quot;&quot;\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     36\u001b[0m     \u001b[0mmodel_path\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mconfig\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m&quot;model_filepath&quot;\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---&gt; 37\u001b[0;31m     \u001b[0mmodel_file\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mclient\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mfile\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mmodel_path\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mgetFile\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mname\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     38\u001b[0m     \u001b[0mmodel_obj\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mjoblib\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mload\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mmodel_file\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     39\u001b[0m     \u001b[0;32mreturn\u001b[0m \u001b[0mmodel_file\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mmodel_obj\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/opt/anaconda3/lib/python3.8/site-packages/Algorithmia/datafile.py\u001b[0m in \u001b[0;36mgetFile\u001b[0;34m(self)\u001b[0m\n\u001b[1;32m     35\u001b[0m         \u001b[0mexists\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0merror\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mexistsWithError\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     36\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0;32mnot\u001b[0m \u001b[0mexists\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---&gt; 37\u001b[0;31m             \u001b[0;32mraise\u001b[0m \u001b[0mDataApiError\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m&#39;unable to get file {} - {}&#39;\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mformat\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mpath\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0merror\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     38\u001b[0m         \u001b[0;31m# Make HTTP get request\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     39\u001b[0m         \u001b[0mresponse\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mclient\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mgetHelper\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0murl\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mDataApiError\u001b[0m: unable to get file asli/xgboost_automated_github/model_1efcc5e311207268e450d6018debe7012f182e71.pkl - authorization required"
+     ]
+    }
+   ],
+   "source": [
+    "%run xgboost_automated_github/src/xgboost_automated_github.py"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Final checks before committing this notebook\n",
+    "\n",
+    "- Make sure `xgboost_automated_github.py` file is in good shape to be pushed to Algorithmia.\n",
+    "\n",
+    "- Make sure Algorithmia API Key is not committed and pushed in any file!"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.3-final"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
+
+
+Sentiment Analysis with XGBoost on Algorithmia
+1. Train, evaluate and test XGBoost model
+In [ ]:
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+
+from string import punctuation
+from nltk.corpus import stopwords
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+Load the training data
+
+Let's load our training data, take a look at a few rows and one of the review texts in detail.
+
+In [ ]:
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+In [ ]:
+data["reviewText"].iloc[1]
+Preprocessing
+
+Time to process our texts! Basically, we'll:
+
+Remove the English stopwords
+Remove punctuations
+Drop unused columns
+In [ ]:
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+In [ ]:
+preprocess_reviews(data)
+data.head()
+Split our training and test sets
+In [ ]:
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+Mini randomized search
+
+Let's set up a very basic cross-validated randomized search over parameter settings.
+
+In [ ]:
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+Pipeline to vectorize, transform and fit
+
+Time to vectorize our data, transform it and then fit our model to it. To be able to feed the text data as numeric values to our model, we will first convert our texts into a matrix of token counts using a CountVectorizer. Then we will convert the count matrix to a normalized tf-idf (term-frequency times inverse document-frequency) representation. Using this transformer, we will be scaling down the impact of tokens that occur very frequently, because they convey less information to us. On the contrary, we will be scaling up the impact of the tokens that occur in a small fraction of the training data because they are more informative to us.
+
+In [ ]:
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+Predict and calculate accuracy
+In [ ]:
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+2. Save XGBoost model to a file
+
+We should save the created model object to a local path. The Github action will then take the model object from this path and upload it to Algorithmia.
+
+In [ ]:
+joblib.dump(model, "model.pkl", compress=True)
+3. Test our serving (Algorithm) code
+
+We will now test our algorithm code, ie. xgboost_automated_github.py script, by simply executing it with the %run macro. The script will begin its execution through our if __name__ == "__main__" line.
+
+In [1]:
+%run xgboost_automated_github/src/xgboost_automated_github.py
+---------------------------------------------------------------------------
+DataApiError                              Traceback (most recent call last)
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in &lt;module&gt;
+     58 
+     59 config = load_model_config()
+---&gt; 60 xgb_path, xgb_obj = load_model(config)
+     61 assert_model_md5(xgb_path)
+     62 
+
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in load_model(config)
+     35     &quot;&quot;&quot;Loads the model object from the file at model_filepath key in config dict&quot;&quot;&quot;
+     36     model_path = config[&quot;model_filepath&quot;]
+---&gt; 37     model_file = client.file(model_path).getFile().name
+     38     model_obj = joblib.load(model_file)
+     39     return model_file, model_obj
+
+~/opt/anaconda3/lib/python3.8/site-packages/Algorithmia/datafile.py in getFile(self)
+     35         exists, error = self.existsWithError()
+     36         if not exists:
+---&gt; 37             raise DataApiError(&#39;unable to get file {} - {}&#39;.format(self.path, error))
+     38         # Make HTTP get request
+     39         response = self.client.getHelper(self.url)
+
+DataApiError: unable to get file asli/xgboost_automated_github/model_1efcc5e311207268e450d6018debe7012f182e71.pkl - authorization required
+Final checks before committing this notebook
+
+Make sure xgboost_automated_github.py file is in good shape to be pushed to Algorithmia.
+
+Make sure Algorithmia API Key is not committed and pushed in any file!
+
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+
+from string import punctuation
+from nltk.corpus import stopwords
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+
+data["reviewText"].iloc[1]
+
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+
+preprocess_reviews(data)
+data.head()
+
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+
+joblib.dump(model, "model.pkl", compress=True)
+
+%run xgboost_automated_github/src/xgboost_automated_github.py
+
+---------------------------------------------------------------------------
+DataApiError                              Traceback (most recent call last)
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in &lt;module&gt;
+     58 
+     59 config = load_model_config()
+---&gt; 60 xgb_path, xgb_obj = load_model(config)
+     61 assert_model_md5(xgb_path)
+     62 
+
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in load_model(config)
+     35     &quot;&quot;&quot;Loads the model object from the file at model_filepath key in config dict&quot;&quot;&quot;
+     36     model_path = config[&quot;model_filepath&quot;]
+---&gt; 37     model_file = client.file(model_path).getFile().name
+     38     model_obj = joblib.load(model_file)
+     39     return model_file, model_obj
+
+~/opt/anaconda3/lib/python3.8/site-packages/Algorithmia/datafile.py in getFile(self)
+     35         exists, error = self.existsWithError()
+     36         if not exists:
+---&gt; 37             raise DataApiError(&#39;unable to get file {} - {}&#39;.format(self.path, error))
+     38         # Make HTTP get request
+     39         response = self.client.getHelper(self.url)
+
+DataApiError: unable to get file asli/xgboost_automated_github/model_1efcc5e311207268e450d6018debe7012f182e71.pkl - authorization required
+
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Sentiment Analysis with XGBoost on Algorithmia"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 1. Train, evaluate and test XGBoost model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.model_selection import train_test_split, RandomizedSearchCV\n",
+    "from sklearn.metrics import accuracy_score\n",
+    "from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer\n",
+    "from sklearn.pipeline import Pipeline\n",
+    "\n",
+    "from string import punctuation\n",
+    "from nltk.corpus import stopwords\n",
+    "\n",
+    "from xgboost import XGBClassifier\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import joblib"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Load the training data\n",
+    "Let's load our training data, take a look at a few rows and one of the review texts in detail."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "data = pd.read_csv(\"./data/amazon_musical_reviews/Musical_instruments_reviews.csv\")\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "data[\"reviewText\"].iloc[1]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Preprocessing\n",
+    "Time to process our texts! Basically, we'll:\n",
+    "- Remove the English stopwords\n",
+    "- Remove punctuations\n",
+    "- Drop unused columns"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "import nltk\n",
+    "nltk.download('stopwords')\n",
+    "\n",
+    "def threshold_ratings(data):\n",
+    "    def threshold_overall_rating(rating):\n",
+    "        return 0 if int(rating)<=3 else 1\n",
+    "    data[\"overall\"] = data[\"overall\"].apply(threshold_overall_rating)\n",
+    "\n",
+    "def remove_stopwords_punctuation(data):\n",
+    "    data[\"review\"] = data[\"reviewText\"] + data[\"summary\"]\n",
+    "\n",
+    "    puncs = list(punctuation)\n",
+    "    stops = stopwords.words(\"english\")\n",
+    "\n",
+    "    def remove_stopwords_in_str(input_str):\n",
+    "        filtered = [char for char in str(input_str).split() if char not in stops]\n",
+    "        return ' '.join(filtered)\n",
+    "\n",
+    "    def remove_punc_in_str(input_str):\n",
+    "        filtered = [char for char in input_str if char not in puncs]\n",
+    "        return ''.join(filtered)\n",
+    "\n",
+    "    def remove_stopwords_in_series(input_series):\n",
+    "        text_clean = []\n",
+    "        for i in range(len(input_series)):\n",
+    "            text_clean.append(remove_stopwords_in_str(input_series[i]))\n",
+    "        return text_clean\n",
+    "\n",
+    "    def remove_punc_in_series(input_series):\n",
+    "        text_clean = []\n",
+    "        for i in range(len(input_series)):\n",
+    "            text_clean.append(remove_punc_in_str(input_series[i]))\n",
+    "        return text_clean\n",
+    "\n",
+    "    data[\"review\"] = remove_stopwords_in_series(data[\"review\"].str.lower())\n",
+    "    data[\"review\"] = remove_punc_in_series(data[\"review\"].str.lower())\n",
+    "\n",
+    "def drop_unused_colums(data):\n",
+    "    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', \"reviewText\", \"summary\"], axis=1, inplace=True)\n",
+    "\n",
+    "def preprocess_reviews(data):\n",
+    "    remove_stopwords_punctuation(data)\n",
+    "    threshold_ratings(data)\n",
+    "    drop_unused_colums(data)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "preprocess_reviews(data)\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Split our training and test sets"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "rand_seed = 42\n",
+    "X = data[\"review\"]\n",
+    "y = data[\"overall\"]\n",
+    "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Mini randomized search\n",
+    "Let's set up a very basic cross-validated randomized search over parameter settings."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "params = {\"max_depth\": range(9,12), \"min_child_weight\": range(5,8)}\n",
+    "rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Pipeline to vectorize, transform and fit\n",
+    "Time to vectorize our data, transform it and then fit our model to it.\n",
+    "To be able to feed the text data as numeric values to our model, we will first convert our texts into a matrix of token counts using a CountVectorizer. Then we will convert the count matrix to a normalized tf-idf (term-frequency times inverse document-frequency) representation. Using this transformer, we will be scaling down the impact of tokens that occur very frequently, because they convey less information to us. On the contrary, we will be scaling up the impact of the tokens that occur in a small fraction of the training data because they are more informative to us."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "model  = Pipeline([\n",
+    "    ('vect', CountVectorizer()),\n",
+    "    ('tfidf', TfidfTransformer()),\n",
+    "    ('model', rand_search_cv)\n",
+    "])\n",
+    "model.fit(X_train, y_train)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Predict and calculate accuracy"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "predictions = model.predict(X_test)\n",
+    "acc = accuracy_score(y_test, predictions)\n",
+    "print(f\"Model Accuracy: {round(acc * 100, 2)}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2. Save XGBoost model to a file\n",
+    "We should save the created model object to a local path. The Github action will then take the model object from this path and upload it to Algorithmia."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "joblib.dump(model, \"model.pkl\", compress=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 3. Test our serving (Algorithm) code\n",
+    "\n",
+    "We will now test our algorithm code, ie. **`xgboost_automated.py`** script, by simply executing it with the `%run` macro. The script will begin its execution through our `if __name__ == \"__main__\"` line. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "%run xgboost_automated/src/xgboost_automated.py"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Final checks before committing this notebook\n",
+    "\n",
+    "- Make sure `xgboost_automated.py` file is in good shape to be pushed to Algorithmia.\n",
+    "\n",
+    "- Make sure Algorithmia API Key is not committed and pushed in any file!"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.3-final"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
+
+Sentiment Analysis with XGBoost on Algorithmia
+1. Train, evaluate and test XGBoost model
+In [ ]:
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+
+from string import punctuation
+from nltk.corpus import stopwords
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+Load the training data
+
+Let's load our training data, take a look at a few rows and one of the review texts in detail.
+
+In [ ]:
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+In [ ]:
+data["reviewText"].iloc[1]
+Preprocessing
+
+Time to process our texts! Basically, we'll:
+
+Remove the English stopwords
+Remove punctuations
+Drop unused columns
+In [ ]:
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+In [ ]:
+preprocess_reviews(data)
+data.head()
+Split our training and test sets
+In [ ]:
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+Mini randomized search
+
+Let's set up a very basic cross-validated randomized search over parameter settings.
+
+In [ ]:
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+Pipeline to vectorize, transform and fit
+
+Time to vectorize our data, transform it and then fit our model to it. To be able to feed the text data as numeric values to our model, we will first convert our texts into a matrix of token counts using a CountVectorizer. Then we will convert the count matrix to a normalized tf-idf (term-frequency times inverse document-frequency) representation. Using this transformer, we will be scaling down the impact of tokens that occur very frequently, because they convey less information to us. On the contrary, we will be scaling up the impact of the tokens that occur in a small fraction of the training data because they are more informative to us.
+
+In [ ]:
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+Predict and calculate accuracy
+In [ ]:
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+2. Save XGBoost model to a file
+
+We should save the created model object to a local path. The Github action will then take the model object from this path and upload it to Algorithmia.
+
+In [ ]:
+joblib.dump(model, "model.pkl", compress=True)
+3. Test our serving (Algorithm) code
+
+We will now test our algorithm code, ie. xgboost_automated.py script, by simply executing it with the %run macro. The script will begin its execution through our if __name__ == "__main__" line.
+
+In [ ]:
+%run xgboost_automated/src/xgboost_automated.py
+Final checks before committing this notebook
+
+Make sure xgboost_automated.py file is in good shape to be pushed to Algorithmia.
+
+Make sure Algorithmia API Key is not committed and pushed in any file!
+
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+
+from string import punctuation
+from nltk.corpus import stopwords
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+
+data["reviewText"].iloc[1]
+
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+
+preprocess_reviews(data)
+data.head()
+
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+
+joblib.dump(model, "model.pkl", compress=True)
+
+%run xgboost_automated/src/xgboost_automated.py
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+
+data["reviewText"].iloc[1]
+
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+
+preprocess_reviews(data)
+data.head()
+
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+
+joblib.dump(model, "model.pkl", compress=True)
+
+%run xgboost_automated_github/src/xgboost_automated_github.py
+
+---------------------------------------------------------------------------
+DataApiError                              Traceback (most recent call last)
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in &lt;module&gt;
+     58 
+     59 config = load_model_config()
+---&gt; 60 xgb_path, xgb_obj = load_model(config)
+     61 assert_model_md5(xgb_path)
+     62 
+
+~/repos/algorithmia_ci/demo_autodeploy_algo_on_github/xgboost_automated_github.py in load_model(config)
+     35     &quot;&quot;&quot;Loads the model object from the file at model_filepath key in config dict&quot;&quot;&quot;
+     36     model_path = config[&quot;model_filepath&quot;]
+---&gt; 37     model_file = client.file(model_path).getFile().name
+     38     model_obj = joblib.load(model_file)
+     39     return model_file, model_obj
+
+~/opt/anaconda3/lib/python3.8/site-packages/Algorithmia/datafile.py in getFile(self)
+     35         exists, error = self.existsWithError()
+     36         if not exists:
+---&gt; 37             raise DataApiError(&#39;unable to get file {} - {}&#39;.format(self.path, error))
+     38         # Make HTTP get request
+     39         response = self.client.getHelper(self.url)
+
+DataApiError: unable to get file asli/xgboost_automated_github/model_1efcc5e311207268e450d6018debe7012f182e71.pkl - authorization required
+
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.pipeline import Pipeline
+
+from string import punctuation
+from nltk.corpus import stopwords
+
+from xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+import joblib
+
+data = pd.read_csv("./data/amazon_musical_reviews/Musical_instruments_reviews.csv")
+data.head()
+
+data["reviewText"].iloc[1]
+
+import nltk
+nltk.download('stopwords')
+
+def threshold_ratings(data):
+    def threshold_overall_rating(rating):
+        return 0 if int(rating)<=3 else 1
+    data["overall"] = data["overall"].apply(threshold_overall_rating)
+
+def remove_stopwords_punctuation(data):
+    data["review"] = data["reviewText"] + data["summary"]
+
+    puncs = list(punctuation)
+    stops = stopwords.words("english")
+
+    def remove_stopwords_in_str(input_str):
+        filtered = [char for char in str(input_str).split() if char not in stops]
+        return ' '.join(filtered)
+
+    def remove_punc_in_str(input_str):
+        filtered = [char for char in input_str if char not in puncs]
+        return ''.join(filtered)
+
+    def remove_stopwords_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_stopwords_in_str(input_series[i]))
+        return text_clean
+
+    def remove_punc_in_series(input_series):
+        text_clean = []
+        for i in range(len(input_series)):
+            text_clean.append(remove_punc_in_str(input_series[i]))
+        return text_clean
+
+    data["review"] = remove_stopwords_in_series(data["review"].str.lower())
+    data["review"] = remove_punc_in_series(data["review"].str.lower())
+
+def drop_unused_colums(data):
+    data.drop(['reviewerID', 'asin', 'reviewerName', 'helpful', 'unixReviewTime', 'reviewTime', "reviewText", "summary"], axis=1, inplace=True)
+
+def preprocess_reviews(data):
+    remove_stopwords_punctuation(data)
+    threshold_ratings(data)
+    drop_unused_colums(data)
+
+preprocess_reviews(data)
+data.head()
+
+rand_seed = 42
+X = data["review"]
+y = data["overall"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_seed)
+
+params = {"max_depth": range(9,12), "min_child_weight": range(5,8)}
+rand_search_cv = RandomizedSearchCV(XGBClassifier(), param_distributions=params, n_iter=1)
+
+model  = Pipeline([
+    ('vect', CountVectorizer()),
+    ('tfidf', TfidfTransformer()),
+    ('model', rand_search_cv)
+])
+model.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+acc = accuracy_score(y_test, predictions)
+print(f"Model Accuracy: {round(acc * 100, 2)}")
+
+joblib.dump(model, "model.pkl", compress=True)
+
+%run xgboost_automated/src/xgboost_automated.py
+
+<iframe width="638" height="479" src="https://www.youtube.com/embed/W-0waOsd8Ho" title="Zero Point Sans(final form)" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><iframe width="638" height="479" src="https://www.youtube.com/embed/W-0waOsd8Ho" title="Zero Point Sans(final form)" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+PK
+��T" MIDI.band/Caches.nosync/_cacheInfoUT
+��b��bfcux��U�Qk�0���H�o][�%M�IA6a:أ$a�Y
+&���/�{����Ρ��k���d�q8�(\c�9�n�8��I��,�+�����L�Y���Ta��kQT��k������8g��<��B�r�.��j��ܭ�2��r
+�����U�t,x����d+/ھ�}�Z硦)����&����&�NO��h��-��$�f)�7L�$�v1�?8�p�S�mg�PK �J�PK
+��T��	 MIDI.band/projectDataUT
+��b��bfcux����v�Ȗ(�\�+�ݣ�|j�ֆ;��3"�$ 	��F46_cF�	p�J��e4��"���{Z�;ξ������������6۸��b������?���������n�t������𷮉�
+������+�����+?���m+����3^_�����p�����A�cw��ݮ���k�k��}�m�� ���'ð�g�C>�.������jv�����㟯�'�t�"��O�ߚ�gS~�m'˙{��`㯯1�?��7߾���Xl��w����]����3\�z;Y�3o�5�f��f�ww���������p��?���L;��7>������f���?��|�~��������p��t����ۍ�G�y/'�ۯZS�����?���8�d�'�M)}��&�Q���ԭjأ�Q�~4
+��.����
+#�����)!�C�e �C�.Ä�0B^��8����848)�}�k������{n��Fpfl��l����
+���q�E�M>�i��X:���)w3���3;Or{�܆��dh�d���/2�s;F?���N���Q���H��O� ��z��#8r�+|;N2
+��g��Oh���&�W�+�cp5N���I��hG�P���;}�n�ïv���S�8@b.�$��y�u�'ր-��X�rv���O�=��*{{C����#�^����~�x�K@���.���B�o��'Dp*�Q�yTj��c��!-u�۲��V/0#�h��!�#���Z
+�h}�&������L.<��)W�����i��=A<'����
+֜����9�
+���c��A��w|]�#�}���ϊ�Vf�twt�4���^���tC��
+���������_p�����������/�������p�WW�Q��|j�x�l<%�a��%��-p"5��F�Nb?ƭ?4ޝ�/�������6���1w�\���
+��_/��4m϶��D^1�X<���?0O|Y�N�l^���S��P;1+�(HLL�Cؚlz��t�GwFUD�঒_�H�
+I�o�M�ȣ��W���;�q@�$^nl�������b�A8rz-
+&E�IH*y�/g�����<�o��K�����HL�V(zf�Q~"�]��F(�q�GYV�'�]:]童Ź�NI	LW@��Z\2+u�<�����t�kJqz3L�<���TU_u��_�g��Si�G}<
+
+���``()��d�Z�b|�=-�=EYv�4��#������Ҳ����G�B����5�{~~H�ͫOp���П�&kq�gHZ�����K�;���p���Y�{8��{��(�x8�p��C㏨���\K�����H�'S�Je5����f4��E9Y!����m\�
+�Ǐ׼��KjF��x}�p���t�Ǐ��=yE�|.�fx�_�������c��q\���`tN�������1^����#�s��ǩ��,��,r�QM�>I���|=�~���j��!��t���gIV�Pw���Ml낤�q~rQ?+�/a���٬��C�{������dCC��pJ"g\�'��Q�=Y�
+�T��خ�܄z
+[4��VD��v���Ƕ��d�]�K��/��A����p쩯���V}w���EW4�I��ο;d�A�Ã,-�
+����]^���Gx�ul�����J������(-Ry�,�Ⲽ��Ըd����k���#�O�7��G�'QU����E�:�V�����@��Y�6�v٧�:�.���`&8�Q:�!
+���,3O)��_	P���W��v���p�����<�����x���0�81��T'���:��=!t����$�	��O�?9:��e���O,�
+H|Rr�C8��ڪ������y.�SI����u�h��!C��Wv��������7.�pl:n!��v��X�&
+���xk+�"���=���Q^-�J���/ײ��յD~%k>�8Y�1��?�_�=�r��d�Ke~�r�6<B��=��s�R���_�-�[V��'լ���=W�����WNܴ����!�����}�-���������ห�U��O�Т7���^��M�Y:^V�ґrt�8����<�um�<!xP�o��K���u��0C��Z���>�����P�v�?�y���-��G���7(\>��{gHt��֭O���1"%�!W:��}"���P���3�q��h��H�r��>���!>*�^'��q"��&�dv�1��V���?�״��`rƃ�M&�S�P9�N��x98����[}�\{V�|
+�W���Rݟ�	�l���C؛O$9�nbT�����9W8�^�OצgV���n�� �!ԟq"E2[8���~����U�b{J�ԏS����&�R�����4�W��L�=g�}&G��>\�8��%Z��i;�k[ܫZ;�;gE���6�Wy�x}9��1^<6���i1-�	퉯/�k�#o��>��{T՞ֽLO$��6&����U\�/_��S�/9C���y\�c���guo���]�QD���K�݋���
+��d����/C�]�F��{V���ɐ4��R\�OeG�Q��ȐR���e�<��$.�#^�<Z[����O��T��E�ں��WF�q������L�y���qq_��Ɍ��?�w�����D\��/�X��M��J��?�M�9:b��;��g������?K���2�W��}�{�����
+��;������(��.�mY~>���+l�D�.��~�?��\����D�S�[&�	�?�����i�����s���y?���s9�t<��Õ��X2����~���os(���x��_�����ݟw�����h<��;��]�%g�)Z��xL��+��b������O������g�'z��>+������~�>^)���A*�
+t*~H��ޚ3����C!��9����1���i���y>���u�Y;v�������T�b�s�p|4���}n����Y����|���}�gx��g�[>�{���Ӽ�_r�+��O�KW�����y"����	>���)����4������YQާ��I�?��Y4ޓ���3�wAO]i{�S�'#�ׂ?\������������}���������~�>�I�I��T�~� 3�-��d�d�bGp� ��dS�ߏr��D�1�J��2�l��@��z&r�(@�.�|�yB�7)'~�φ�a	r�{n���25T�6ƶ�=	p}"%���xRD�s��q��L�\e�H�ǅp������Dp�ŷؓ�{����0��m4�?;�m�N}K?����PD1���iJ�|�nxZ��+����N��W�������ud�
+ �Gj������kH�/o1L+�{�������np$8h]��p�_���Ifvx�K{RJ�.��xY�~ft����
+`�!�
+� ��#��]�(�����_�Һ�*�K���KG�������wӧ��^;��8�?����wZ���e�it��b�[�3���'�S$��n�ody����Z����>���@ȣ�oU�ZV����q�	�{���}��O�>�w��|�([3~k������n��Q|��/okɄo��z:�,�o�#!a̷�y˻������竖�՛�=�n\Ӂ�ro4�/�7���ύ�w�����ܧq���2��2�����ћw�p���-�ݳ��;:������%�+���k:$��rOps5G�����97���=�GL���[�gya&�w�|K�ց��}��,�Sx_��u.\��]b�
+q���5����D�>�_�F@�=	(�s]L�
+w��;J���J�+����t�]=��}&W擣��'��tƞ�_����3�ߗ@���ω3}�λ�D!XJ�nB$9����=�[!��݁{J���/K7�_s-/���yp)�\�21��x4�[�7���/21��0��8/{%1^4u�s�q�<|r�$���x_IB3}�H��;�lu?��k�>��Hx��;Y�@>� a��╛|S���P�ZX�Z��?��n��ιR�D���JVI��oB���Z�}H��K�G�i�P�^O�������l�8]�G��c,�@��c��<�ׅ_~�c����y���o�]+ԗ�g�NX�4a�W�c��?�w��yO�\MRs#޺��2��ߌ�B��@�sC�,���B�L�"d}��}a"�,?O�9�,
+�)i��m2�yB�/'�ӑ���JF�ש�4��H
+T���54C?�݄u$k��W�݌ב�cx}�1�P�M��7�3Ry�0��@G��ҤR�����O��d�P�q�>���
+�]��'U�3+bn��ō������X�34a�į����b��w����Vra�N�ޑ��<�R� �R��5ZÍ���[\�|\�YvE����c0��3�5�:r�k#Q?��J��nw�"�{Җ�+�+6�8���\%�>k�'�p'�����;�0�"���9B7�_ُp<4N�76����Z�'��?�>\g�۩X�"����-��G���oъWo%���Vdp�]Tr����y��B����>���24�z�v��/��'0�4	�Ff��c߱���/i����1}e�ս7�zz����<?>�#�1��#�#�G|2�Y{y��
+e<��~��}q�N�|'�8�>���?,�Y��x=�[j;R?_�;v�sG8��\y7X���xLy�A^��[��|�@~}}�_��@7]x���g�s
+‎����|�� �܍��m��񰇣��B��p8h]�e��Y��R�g�.�t_]�_�, �f�����[�AJ$Z'�)By7��H�S:W$C
+‎%#����ߨ���qc����:p�Z�cx�.qX���t��ȶJ�c�"�|�6��0����]��>�!�g����إ�������~�NR{���gMH�]����bzb���>ԅ=	?��C���yf��٢�Q���t=�ἢ��B��	���z�;���=b������4���g���p��T�ϑM�v���
+�ɳi��y��3x��4>��"⣻�����aO��9�Ib�i��6��o�TE��~Q؛�fkn#�����׷뗩�|�?�:��h���3��}׃s���q����E�
+7z'���3����a�y��W�q����"m���������`
+�ŕ���p�qf�J��X窱<��!�u{�T:���f]J$7�,${v�{��Ş�y�r5^<��ťd�W��s?9c9/��-���(�\y��:\!�7�7��Q-��)З����o�n�����̟O?_�=�[��\�����l��^�#=�)�>p��8�_��7���эH�ɜ�n��w�̅�"�c�8A�{�i���0'���<oj�
+b�kO�7�p��v)/^a�x
+�'o>�[Gs3�\W�8�f���s���u������"��8�]��q�c�YR��4l2�<��zcr�����\8���{0Y��l�+cs>O�u�椒�]0���t����f��q�Z|Ϥ:]��mvY'�O�����P����3�m�3�g��M��a�o
+�C��饟�������?`}a�%�`G6���\���^3�s""�1˷"�G
+����6�DӹN��I�[�����f�ގǇ��K�7XR
+��j��S�8,�ל:c�������>�,��T�#�p��),��{�'����6+��Q���~�z����x�̓����<B�$s�W�^F����L�ar�̏�3g��v�3X�g\�g�s��{F�������i'~���������d�e����3����9i������g\����rJ�q&ϸ�NG�r��6�9KMX'/��+N��������"���ϯ�Rp	H8��^D�����mL
+‎ח|����o�A�_q`}ߣ�x�R>
+�g�n
+�5/\p��ڈ�zp��1�Z�`�Z��h�z��z�7=�ַG?�e|���	,�ɼ���y��5?Kח��G������=ؔ=���{6��>K�@O�V���I�J��O�2��y���_��Syp�6LN�i:t3�K��rӶJNۧ�^f��k{$��P��Z���cE����p)���@>e[��M�����!Bh7x��a/�'����4��؃V���@>�"���=�_��X=n44<z�M�2���<?s��c�\R���Pۡc{�m��K�_���)���`��f������i�>�_�w�&�������;��2N����5OVz� s��	\~��Ӓ3�i+r�x��oUz���g�#N�����T���'�`ϱ3���7�OK�M�m	�&r��u����n��J^K�2��e?{���xO����!L�����Y_V��kF����qU�I��K��4G�(�{��,؀�a<�{;�S������&|���R��F�-�z����9�#���
+���x&�ΨZPz���f�aX�j'����tب�*o�N������$yΧǣ���t<D��EQg�������s�v��m��_��җ���O�=��ׯ�F{Zh�o���>����B\Y��A�9�Gś螆���_���ܓ\s�3���U��P�x�/�=��%�\�ZF�3��%�~��3M��������5�d�:��T���[��q�+�@�<y���k���7i[�����3y�,�p������5X����~�k����ʣ���\=��O&E_���hL��է(�zD��J�{�ɧ����G4Σ/��h�����ѕ�/��g/F��_J�X��T�sQ��ޣ��E�K��k�S�0�~\H�<�ڣ�Ʃ�oB�P/���R$����)����>����#��'��x����k���B�"_�7>�󡞦O��7�?�������Ʃ|�}N��3z���̡q��[��O���<�h��W�
+��ӷ�|��.�1���p֟���3ZC������p?��}�y�ɽ��p
+�O�鈾�hl�szF��z𱞎��1_��|��4O�=]7�:�q�g閾4~�Y�#����t�?)�������ȷGy2���I����U��\N��D��hL3h�2ڇ��tD_�<�T"�9���i��K�q�g�X�c����ʏo�xN�ۧ�tt�'��ޑ�$?A����d~����O�O�Ȱ��>�k����Z޵����������E�GO������)��#_+�K堒��e�Z>+�i|��8�6��7茶Vv�y4�]�}Sp?�n�C����\Lc������'11�'H��������b��>9u��c���ӾV�h�z�����@_6^��O��1�~G�K��q�0K�Vv��z:�����~�k1��3�\���I�۟�Z��'����hL���o*~���E�/�c�>��h���Z4}K�	�e8�/?�B�%��A<�<�^ۿge8ɿ�����p1�i
+�)N�U��tҳ�}Q>�aL,���C_K����V���X��J񜞕�d�?�"8��������Sr����C��E������UH���7��+;\\�}����@�=�lq�~a��������xN���@��L����W��w,���G�����o�?Q��HO�tM���N�������6��T��u�?�� ����c����)���/�?�h���X������311;��Ϩ?������� y�o�?��5���@�h���m�8�ǿX8'{e~{�!�p�����N������ 7��su�hO���y��X�b���7���_R���ٱxF���L^�O�?�ɽ�����u��Qs�pn�׉����Y�����ɽ����׉��U��6<<�Ḿ���碼�o�?��M�v`�o�?H�~X��:q4�_P8�$��������T��u���S��;��?��u�?P8��Z���0���o�?���Ŀ�� =��柲��Q^�O�?L�'���N�Ŀ��@�Ҟ�?��:q8�?Z���;���	����&�����_'��e�A~'�����?�?\��Z���!����F�;�r�w��N����g�ZB�a������u�?�� ������:��?\���Q��#��w����?���@g�H��7F��r/��'��䉿�����[�J�߭?p�u�h�b��������yr�o�?p�ub�'������ѱrh,���p��k���$r_1[X0~/b���7�8��A�������d�L�q�Wq�����N6�<��gp����M�O�3���?@*2C߂�����zS�t��Q��;�C���y��z�p�q�h�7�C���xIȩ?p�_�2��@�ޛ���_|�Ng��6�'�ge֛_H鵼����4��蛑�'y:���쥿����%���������t
+/�+Zo��0��l�=��y�}?�M-9뽊��g �??�������;4�[���!o���>����F�#�,?�T�gm�R��W��>f]�%-��xɬ�/�a.m��|y�H��|�̔��h�ڇV2~���F����3���3�"�_c���A}�I|��͈�R�I}�K��F~��:�#�C���/Y|ڿ��8�&�é�-j�D.��3O�R��� �����$���>oFQJ�j`z����4�����)��Ip&bU�9qgO:v}�^[57�}����\����嫠�"$�p�wJP�G�1���R���A><e�u?�e��U7�\!��l�0����O���Ux=[�b����ER��.����asz�"��It�s���.|.Q>Kާ���.��8g�'��o�\?2u��%
+	8���'��H�|	��H{��`�Y�{�'���a7�¸���}tjQp��/z���YF�����=[��=Q�p���ϠMy�	�b��͓�oކ��3�߼��ONy�M���h}��&|M�L���$
+���t
+�0f#�g`�H�lkd�Dv�w�>#擱'�K��=/E�%��/����7J��$<���4�x�z�=���=��Y��+���p�z�@�B�����Ć�]p)8�'�3�{�ķ$k1���\b�<+�+6㹊n������$���{�cA�)m�{�;%���Fr�9~va=�9̕j"����<��(��=��>ɽ�E���_p����_p����_p���c��kgsp�Y8����9�?u��Sp^�*.��Ψ4���nU?��W�]&7oj%p��u�`Z<b����x`Z���f����%���\ sU�[�#�����5[H]ZU���Kr�>���I�s{��Cp٫0ʒ@���u:��oE��_��2��C3pR=�t��r|Ƣ��'f�e��>ɳs���_Q'`c�\4�pp��(/Y��)��
+![�6��+�!�0}O={�/�
+�fL�����F݈O�:C���4ߑ��w���F��*|F�`�<������>C�ܞGf���J:.�_��c���>���������1g	�<��g1�cÄ��$˱&�T.>���\�~I�5����O�ȳ���'k���_��κ9w��r��x7��.��y��Ѱs�
+�q�z*�@Eg�F5�&��l�~<�Kϛ�Qy�L	�p�sTy�}7��G�$���|7][g��&U�Rs1^[˩��/Q���0�R}��=���xH�s�ڭƶ^�Mx�^�C�Q���*�3���۵�}�_;w���#����G��vl�&R���{"s*����yN��+���~kK��Ƴ�7߽�-U��'�e�����+�̫�>���͆�x�kߓ��9"sr��ʡ���	=e b�O��W�#"l�O��2�qj}���ܫ}(��PjP�@*����t���8�@�\��5����G��߮l��UK͕Y�JS��U��'�{�hأy�I��
+��D�FY7k�0��3J'T�3S=O���h��N��ݷ{3
+�oT��Ȟݍ?�>3��ޔ���"b����ŋ�*�]�&�釀�8Y�	����ɵ�'�ӥ�5�/�n�G��ɼ7:MzU�ʈ)���k_���m�[�۱˾...more
+
+cawXom-mykxov-qempa2
+glpat-srrSzoS7a5GfnTr-eQea
+88e805C9d4dEdD4cc934A8B1AC05Ef52e452cB19AA60ccC0DAdE8AAB6C0b7CC0841E9D0
+cawXommykxov$qempa2
+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
+miv3iexmlkiao5zra6avqsxpjjz3tqbgo3qsag5v4xiuv3bc45ja
+938eb8a0-bad9-435a-a5b9-443cfbde0dfd
+9e3520d8-acb1-4037-a2e9-fff7301b7655
+938eb8a0-bad9-435a-a5b9-443cfbde0dfd
+
+
+cawXom-mykxov-qempa2
+
+glpat-srrSzoS7a5GfnTr-eQea
+
+88e805C9d4dEdD4cc934A8B1AC05Ef52e452cB19AA60ccC0DAdE8AAB6C0b7CC0841E9D0
+
+cawXommykxov$qempa2
+
+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
+
+miv3iexmlkiao5zra6avqsxpjjz3tqbgo3qsag5v4xiuv3bc45ja
+
+938eb8a0-bad9-435a-a5b9-443cfbde0dfd
+
+9e3520d8-acb1-4037-a2e9-fff7301b7655
+
+938eb8a0-bad9-435a-a5b9-443cfbde0dfd
+
