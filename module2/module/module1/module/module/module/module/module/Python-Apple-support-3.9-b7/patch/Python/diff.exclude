@@ -1,6 +1,0 @@
-.gitattributes
-.github/*
-.gitignore
-.mention-bot
-.travis.yml
-Misc/NEWS.d/*
