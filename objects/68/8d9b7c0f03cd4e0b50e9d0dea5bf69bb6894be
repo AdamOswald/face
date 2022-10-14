@@ -3,10 +3,10 @@
 	path = module
 	pull = merge rebase
 	pull = squash always
-	ref = if refs/heads/master sync refs/heads/main
+	ref = if refs/heads/r0.5_pre-training_refactor sync refs/heads/main
 	url = agnostic://gh/536692186
-[map "6f266928-f4f2-398e-bc3b-1063413170cf"]
-	object = 6723dfdb0853bc14439df820634432ac3ed9a39f
+[map "eb44d317-089c-3128-b9bc-29e393796a20"]
+	object = 61c83f06577dea49f26fcf68126e7e1430b1f597
 	path = module
 	stage = sync
 	type = extract module
