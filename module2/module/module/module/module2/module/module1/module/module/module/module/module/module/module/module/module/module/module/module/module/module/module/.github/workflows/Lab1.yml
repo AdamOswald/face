@@ -1,2 +1,0 @@
-- name: Github-Gitlab-CI
-  uses: adityakavalur/github-gitlab-ci@v0.1.1
