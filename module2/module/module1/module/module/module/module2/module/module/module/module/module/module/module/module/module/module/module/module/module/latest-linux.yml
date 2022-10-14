@@ -1,9 +1,0 @@
-version: 6.0.6
-files:
-  - url: Netron-6.0.6.AppImage
-    sha512: hXxn3Yh7WNU0XhKlkz85VbeohGY1wT4Er385p/nf4RT6M1JS6aNoOePtGmoP/nnDHx55gh39M+TyeLGXcY/gwQ==
-    size: 92960557
-    blockMapSize: 100161
-path: Netron-6.0.6.AppImage
-sha512: hXxn3Yh7WNU0XhKlkz85VbeohGY1wT4Er385p/nf4RT6M1JS6aNoOePtGmoP/nnDHx55gh39M+TyeLGXcY/gwQ==
-releaseDate: '2022-09-17T01:29:39.871Z'

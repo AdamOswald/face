@@ -1,7 +1,0 @@
-- name: Generate README.adoc
-  uses: sebastian-sommerfeld-io/github-action-generate-readme@v0.1.0
-
-- name: README.adoc
-  uses: sebastian-sommerfeld-io/github-action-generate-readme@main
-  with:
-    caption: 'Github Action: Generate README.adoc'
