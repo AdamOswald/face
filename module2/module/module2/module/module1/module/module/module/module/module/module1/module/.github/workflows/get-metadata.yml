@@ -1,2 +1,0 @@
-- name: Get GitHub ProjectV2 Metadata
-  uses: eleutheria-tech/get-github-project-v2-metadata@v0.0.1-alpha

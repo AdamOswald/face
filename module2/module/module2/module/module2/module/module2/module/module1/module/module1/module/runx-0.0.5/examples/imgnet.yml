@@ -1,5 +1,0 @@
-CMD: "python imgnet.py"
-
-HPARAMS:
-   lr: [0.1, 0.05]
-   logdir: LOGDIR
