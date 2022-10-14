@@ -1,3 +1,12 @@
+[map "eb44d317-089c-3128-b9bc-29e393796a20"]
+	object = 61c83f06577dea49f26fcf68126e7e1430b1f597
+	path = module
+	stage = sync
+	type = extract module
+[map "95b4ec63-5a40-360f-bebb-146b0cf6625e"]
+	object = 034f002b704f7c556f76c95991c283ce6d99e57f
+	path = module
+	type = extract module
 [module "aeed691b-04a2-3155-a183-6fc01c44ba76"]
 	conflict = request-pull
 	path = module
@@ -5,8 +14,3 @@
 	pull = squash always
 	ref = if refs/heads/r2.1_pre-head-extract sync refs/heads/main
 	url = agnostic://gh/536692186
-[map "eb44d317-089c-3128-b9bc-29e393796a20"]
-	object = 61c83f06577dea49f26fcf68126e7e1430b1f597
-	path = module
-	stage = sync
-	type = extract module
