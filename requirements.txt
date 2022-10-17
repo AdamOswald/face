@@ -77,7 +77,7 @@ mlspeclib==0.0.25
 msgpack==1.0.0
 pymysql==0.9.3
 python-box==5.0.0a0
-pyyaml==5.3.1
+pyyaml==5.4
 semver==2.10.1
 six==1.15.0
 smmap==3.0.4
