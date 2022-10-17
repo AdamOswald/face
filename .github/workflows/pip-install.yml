@@ -1,7 +1,0 @@
-- name: Pip Install Action
-  uses: logikal-io/pip-install@v1.0.0
-
-steps:
-  - uses: logikal-io/pip-install@{release}
-  
-  
