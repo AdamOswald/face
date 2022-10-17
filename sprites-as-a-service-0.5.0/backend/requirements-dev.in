@@ -1,7 +1,0 @@
--r requirements.txt
-pytest
-pytest-cov
-# Devtools
-black
-pylint
-memory_profiler
