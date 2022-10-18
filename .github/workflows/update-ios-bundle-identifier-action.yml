@@ -1,0 +1,39 @@
+- name: Update iOS bundle identifier
+  uses: damienaicheh/update-ios-bundle-identifier-action@v1.0.0
+
+- name: Update Bundle identifier
+  uses: damienaicheh/update-ios-bundle-identifier-action@v1.0.0
+  with:
+    info-plist-path: './path_to_your/Info.plist'
+    bundle-identifier: 'com.mycompany.app'
+    bundle-name: 'Name'
+    bundle-display-name: 'New App'
+    print-file: true
+    
+    name: 'Update iOS bundle identifier'
+description: 'Update iOS bundle identifier of your Info.plist file'
+author: 'damienaicheh'
+inputs:
+  info-plist-path:
+    description: 'Relative path for the Info.plist file.'
+    required: true
+  bundle-identifier:
+    description: 'The value of the CF Bundle Identifier'
+    required: true
+  bundle-name:
+    description: 'The value of the CF Bundle Name'
+    required: false
+  bundle-display-name:
+    description: 'he value of the CF Bundle Display Name'
+    required: false
+  print-file:
+    description: 'Output the Info.plist file in console'
+    required: false
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
+branding:
+  icon: 'file'
+  color: 'blue'
+  
+  

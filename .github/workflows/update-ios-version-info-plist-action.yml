@@ -1,0 +1,35 @@
+- name: Update iOS version Info.plist
+  uses: damienaicheh/update-ios-version-info-plist-action@v1.1.0
+
+- name: Update Info.plist
+  uses: damienaicheh/update-ios-version-info-plist-action@v1.0.0
+  with:
+    info-plist-path: "./path_to_your/Info.plist"
+    bundle-short-version-string: "2.0"
+    bundle-version: "2"
+    print-file: true
+    
+    name: 'Update iOS version Info.plist'
+description: 'Update the Info.plist file'
+author: 'damienaicheh'
+inputs:
+  info-plist-path:
+    description: 'Relative path for the Info.plist file.'
+    required: true
+  bundle-short-version-string:
+    description: 'CF Bundle Short Version String'
+    required: true
+  bundle-version:
+    description: 'CF Bundle Version'
+    required: true
+  print-file:
+    description: 'Output the Info.plist file in console'
+    required: false
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
+branding:
+  icon: 'file'
+  color: 'blue'
+  
+  
