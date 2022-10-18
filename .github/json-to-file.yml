@@ -1,0 +1,26 @@
+- name: json-to-file
+  uses: devops-actions/json-to-file@v1.0.0
+
+- uses: devops-actions/json-to-file@v1.0.0
+  with:
+    json: '{"test": "test"}'
+    filename: 'test.json'
+    
+    name: 'json-to-file'
+description: 'Write json from variable to file'
+author: 'devops-actions'
+branding:
+  icon: file-text
+  color: orange
+inputs:  
+  json:
+    required: true
+    description: 'The json you want to store'
+  filename:
+    required: true
+    description: 'The filename you want to store the json in'
+runs:
+  using: 'node16'
+  main: 'dist/main.js'
+  
+  
