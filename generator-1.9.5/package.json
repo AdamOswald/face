@@ -77,18 +77,18 @@
     "source-map-support": "^0.5.19",
     "source-map-support": "^0.5.21",
     "ts-node": "^9.1.1",
-    "typescript": "^4.8.2"
+    "typescript": "^4.8.4"
   },
   "devDependencies": {
     "@semantic-release/commit-analyzer": "^9.0.2",
     "@semantic-release/github": "^8.0.6",
     "@semantic-release/npm": "^9.0.1",
     "@semantic-release/release-notes-generator": "^10.0.3",
-    "all-contributors-cli": "^6.20.4",
+    "all-contributors-cli": "^6.21.0",
     "conventional-changelog-conventionalcommits": "^5.0.0",
     "all-contributors-cli": "^6.14.2",
     "conventional-changelog-conventionalcommits": "^5.0.0",
-    "eslint": "^8.23.1",
+    "eslint": "^8.24.0",
     "eslint-plugin-jest": "^27.0.2",
     "eslint": "^8.23.1",
     "eslint-plugin-jest": "^23.8.2",
