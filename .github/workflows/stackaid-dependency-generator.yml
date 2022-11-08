@@ -1,0 +1,57 @@
+- name: Stackaid dependency generator
+  uses: stackaid/generate-stackaid-json@v1.9
+
+name: 'fund-on-stackaid'
+on:
+  push:
+    branches:
+      - main
+jobs:
+  stackaid-json:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v3 # Only required for Go based repos
+      - uses: stackaid/generate-stackaid-json@v1.9
+      
+      token: ${{ secrets.STACKAID_ACCESS_TOKEN }}
+publish_repo: 'owner/name' # of new repository
+publish_path: ${{ github.repository }} # Publishes dependecy files under the current repo name. Avoids name conflicts when using this action on multiple repositories.
+
+name: 'Stackaid dependency generator'
+description: "Generate a stackaid.json file based on your repository's dependency graph"
+author: 'Wes Carr wescarr@gmail.com'
+inputs:
+  token:
+    description: 'A GitHub access token. If publishing to a different repo you must provide a token with appropriate permissions'
+    default: ${{ github.token }}
+  publish_repo:
+    description: 'The repository to publish the stackaid.json file. Defaults to current repository'
+    default: ${{ github.repository }}
+    required: false
+  publish_path:
+    description: 'The path to publish the stackaid.json file'
+    default: ''
+    required: false
+  skip_publish:
+    description: 'If true, the stackaid.json file will not be published to the repository'
+    default: false
+    required: false
+  src_dir:
+    description: 'Source code root directory'
+    default: ${{ github.workspace }}
+    required: true
+  include_package_json:
+    description: "If true and publish_repo is different from the working repository, then package.json files will be copied to publish_repo. Use this option when you don't want StackAid to have access to your source."
+    default: true
+    required: true
+outputs:
+  stackaid_json:
+    description: 'The generated stackaid.json file'
+runs:
+  using: 'node16'
+  main: 'dist/index.js'
+branding:
+  icon: 'layers'
+  color: 'orange'
+  
