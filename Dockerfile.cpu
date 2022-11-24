@@ -1,4 +1,4 @@
-FROM tensorflow/tensorflow:2.11.0rc2
+FROM tensorflow/tensorflow:latest
 
 # To disable tzdata and others from asking for input
 ENV DEBIAN_FRONTEND noninteractive
