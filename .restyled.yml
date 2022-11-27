@@ -1,0 +1,45 @@
+# See https://github.com/restyled-io/restyled.io/wiki/Configuring-Restyled
+
+enabled: true
+
+exclude: []
+
+also_exclude: []
+
+changed_paths:
+  maximum: 2000
+  outcome: error
+
+remote_files: []
+
+auto: false
+
+commit_template: |
+  Restyled by ${restyler.name}
+
+pull_requests: true
+
+comments: false
+
+statuses:
+  skipped: true
+  differences: true
+  no_differences: true
+
+request_review: none
+
+labels: []
+
+ignore_authors:
+  - "*[bot]"
+
+ignore_branches:
+  - "renovate/*"
+
+ignore_labels:
+  - restyled-ignore
+
+restylers_version: stable
+
+restylers:
+  - "*"
