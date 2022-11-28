@@ -7,7 +7,7 @@ opencv-python
 scikit-image
 scikit-learn
 matplotlib==2.2.5
-ffmpy==0.2.2
+ffmpy==0.3.0
 nvidia-ml-py3
 h5py==2.10.0
 Keras==2.2.4
