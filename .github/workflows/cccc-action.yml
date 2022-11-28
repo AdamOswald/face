@@ -17,7 +17,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: upload metrics report
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: metrics
           path: ./metrics
