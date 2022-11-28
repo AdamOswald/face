@@ -18,5 +18,5 @@ ffmpy==0.2.3
 nvidia-ml-py<11.515
 plaidml==0.7.0
 tensorflow>=2.9.3,<2.9.4
-tensorflow_probability<0.17
+tensorflow_probability<0.19
 typing-extensions>=4.0.0
