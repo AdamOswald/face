@@ -3,7 +3,7 @@
 
 sphinx==5.0.2
 sphinx_rtd_theme==1.0.0
-tqdm==4.64
+tqdm==4.64.1
 psutil==5.8.0
 numexpr>=2.8.3
 numpy>=1.18.0
@@ -17,6 +17,6 @@ imageio-ffmpeg==0.4.7
 ffmpy==0.2.3
 nvidia-ml-py<11.515
 plaidml==0.7.0
-tensorflow>=2.8.0,<2.9.0
+tensorflow>=2.9.3,<2.9.4
 tensorflow_probability<0.17
 typing-extensions>=4.0.0
