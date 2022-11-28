@@ -10,7 +10,7 @@ matplotlib==2.2.5
 ffmpy==0.2.2
 nvidia-ml-py3
 h5py==2.8.0
-Keras==2.2.4
+Keras==2.11.0
 cmake
 dlib
 face_recognition
