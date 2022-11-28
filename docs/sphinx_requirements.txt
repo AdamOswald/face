@@ -17,6 +17,6 @@ imageio-ffmpeg==0.4.7
 ffmpy==0.3.0
 nvidia-ml-py<11.516
 plaidml==0.7.0
-tensorflow>=2.9.3,<2.9.4
+tensorflow>=2.11.0,<2.11.1
 tensorflow_probability<0.17
 typing-extensions>=4.0.0
