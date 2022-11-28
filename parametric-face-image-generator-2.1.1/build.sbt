@@ -1,7 +1,7 @@
 name := """parametric-image-generator"""
 version       := "1.0"
 
-scalaVersion  := "2.12.17"
+scalaVersion  := "2.13.10"
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 
@@ -13,7 +13,7 @@ libraryDependencies += "ch.unibas.cs.gravis" %% "scalismo-faces" % "0.90.0"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.14" % "test"
 
-libraryDependencies += "org.rogach" %% "scallop" % "2.1.3"
+libraryDependencies += "org.rogach" %% "scallop" % "4.1.0"
 
 mainClass in assembly := Some("faces.apps.ListApplications")
 
