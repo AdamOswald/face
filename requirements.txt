@@ -16,7 +16,25 @@ Keras==2.11.0
 cmake
 dlib
 face_recognition
-
+sphinx==5.3.0
+sphinx_rtd_theme==1.1.1
+tqdm==4.64.1
+psutil==5.9.4
+numexpr>=2.8.3
+numpy>=1.18.0
+opencv-python>=4.5.5.0
+pillow==9.3.0
+scikit-learn>=1.0.2
+fastcluster>=1.2.4
+matplotlib==3.6.2
+imageio==2.22.4
+imageio-ffmpeg==0.4.7
+ffmpy==0.3.0
+nvidia-ml-py<11.516
+plaidml==0.7.0
+tensorflow>=2.11.0,<2.11.1
+tensorflow_probability<0.19
+typing-extensions>=4.0.0
 # tensorflow is included within the docker image.
 # If you are looking for dependencies for a manual install,
 # you may want to install tensorflow-gpu==1.4.0 for CUDA 8.0 or tensorflow-gpu>=1.6.0 for CUDA 9.0
