@@ -14,7 +14,7 @@ fastcluster>=1.2.4
 matplotlib==3.5.1
 imageio==2.22.4
 imageio-ffmpeg==0.4.7
-ffmpy==0.2.3
+ffmpy==0.3.0
 nvidia-ml-py<11.515
 plaidml==0.7.0
 tensorflow>=2.9.3,<2.9.4
