@@ -11,7 +11,7 @@ opencv-python>=4.5.5.0
 pillow==9.3.0
 scikit-learn>=1.0.2
 fastcluster>=1.2.4
-matplotlib==3.5.1
+matplotlib==3.6.2
 imageio==2.9.0
 imageio-ffmpeg==0.4.7
 ffmpy==0.2.3
