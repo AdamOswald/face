@@ -9,7 +9,7 @@ jobs:
     name: Executes pylint
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
 
       - name: Lint
         uses: gabriel-milan/action-pylint@v1
