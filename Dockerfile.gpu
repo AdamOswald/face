@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.7.0-runtime-ubuntu18.04
+FROM nvidia/cuda:11.8.0-runtime-ubuntu18.04
 ARG DEBIAN_FRONTEND=noninteractive
 
 #install python3.8
