@@ -1,0 +1,52 @@
+automations:
+  estimated_time_to_review:
+    if:
+      - true
+    run:
+      - action: add-label@v1
+        args:
+          label: "{{ calc.etr }} min review"
+          color: {{ 'E94637' if (calc.etr >= 20) else ('FBBD10' if (calc.etr >= 5) else '36A853') }}
+
+# To simplify the automation, this calculation is placed under a unique YAML key.
+# The result is is assigned to `calc.etr` which is used in the automation above.
+# You can add as many keys as you like.
+calc:
+  etr: {{ branch | estimatedReviewTime }}
+  
+automations:
+  allow_formatting:
+    if:
+      - {{ files | extensions | match(list=['js', 'ts']) | every }}
+      - {{ source.diff.files | isFormattingChange }}
+    run:
+      - action: approve@v1
+      - action: add-label@v1
+        args:
+          label: code-formatting
+          
+automations:
+  {% for item in deprecated %}
+  # Automation names should be unique, therefore the iteration number postfix
+  catch_deprecated_components_{{ loop.index }}:
+    if:
+      - {{ source.diff.files | matchDiffLines(regex=item.regex) | some }}
+    run:
+      - action: add-label@v1
+        args:
+          label: 'deprecated-component'
+          color: '#FF0000'
+      - action: request-changes@v1
+        args:
+          comment: |
+            `{{ item.old }}` component is deprecated, use `{{ item.new }}` instead
+  {% endfor %}
+
+# This list includes the deprecated items
+deprecated:
+  - regex: r/callElvis/
+    old: Elvis
+    new: Gaga
+  - regex: r/callOldAPI/
+    old: callOldAPI
+    new: callBetterAPI
