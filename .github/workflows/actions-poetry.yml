@@ -1,5 +1,5 @@
 - name: Python Poetry Action
-  uses: abatilo/actions-poetry@v2.2.0
+  uses: abatilo/actions-poetry@v2.3.0
 
 name: CI
 on: pull_request
