@@ -4,7 +4,7 @@
 sphinx==5.3.0
 sphinx_rtd_theme==1.1.1
 tqdm==4.64.1
-psutil==5.9.4
+psutil==5.9.5
 numexpr>=2.8.3
 numpy>=1.18.0
 opencv-python>=4.5.5.0
