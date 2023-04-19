@@ -3,3 +3,5 @@ numpy>=1.21.0; python_version < '3.8'
 numpy>=1.22.0; python_version >= '3.8'
 tensorflow-gpu>=2.7.0,<2.10.0
 pynvx==1.0.0 ; sys_platform == "darwin"
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
+wheel>=0.38.0 # not directly required, pinned by Snyk to avoid a vulnerability
