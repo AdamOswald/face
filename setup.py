@@ -25,7 +25,7 @@ _INSTALL_FAILED = False
 # Tensorflow builds available from pypi
 _TENSORFLOW_REQUIREMENTS = {">=2.7.0,<2.10.0": ["11.2", "8.1"]}
 # Packages that are explicitly required for setup.py
-_INSTALLER_REQUIREMENTS = [("pexpect>=4.8.0", "!Windows"), ("pywinpty==2.0.10", "Windows")]
+_INSTALLER_REQUIREMENTS = [("pexpect>=4.8.0", "!Windows"), ("pywinpty==2.0.12", "Windows")]
 
 # Mapping of Python packages to their conda names if different from pip or in non-default channel
 _CONDA_MAPPING: Dict[str, Tuple[str, str]] = {
