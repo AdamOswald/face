@@ -20,3 +20,4 @@ plaidml
 tensorflow
 tensorflow_probability
 typing-extensions
+fonttools>=4.43.0 # not directly required, pinned by Snyk to avoid a vulnerability
