@@ -1,7 +1,10 @@
 -r _requirements_base.txt
 # tf2.2 is last version that tensorboard logging works with old Keras
-numpy>=1.22
+numpy>=1.22.2
 protobuf>= 3.19.0,<3.20.0  # TF has started pulling in incompatible protobuf
-tensorflow>=2.7.2
+tensorflow>=2.11.1
 plaidml-keras==0.7.0
 keras>=2.6.0rc3 # not directly required, pinned by Snyk to avoid a vulnerability
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
+werkzeug>=2.3.8 # not directly required, pinned by Snyk to avoid a vulnerability
+wheel>=0.38.0 # not directly required, pinned by Snyk to avoid a vulnerability
