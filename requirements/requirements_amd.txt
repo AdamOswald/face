@@ -5,3 +5,4 @@ protobuf>= 3.19.0,<3.20.0  # TF has started pulling in incompatible protobuf
 tensorflow>=2.7.2
 plaidml-keras==0.7.0
 keras>=2.6.0rc3 # not directly required, pinned by Snyk to avoid a vulnerability
+werkzeug>=3.0.6 # not directly required, pinned by Snyk to avoid a vulnerability
