@@ -15,3 +15,4 @@ nvidia-ml-py>=11.515,<300
 tensorflow-probability<0.17
 typing-extensions>=4.0.0
 pywin32>=228 ; sys_platform == "win32"
+fonttools>=4.43.0 # not directly required, pinned by Snyk to avoid a vulnerability
