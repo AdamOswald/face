@@ -51,7 +51,7 @@ runs:
       env:
         ReleaseVersion: ${{ steps.tag_version.outputs.new_tag }}
     - name: Publish package
-      uses: pypa/gh-action-pypi-publish@v1.8.5
+      uses: pypa/gh-action-pypi-publish@v1.12.4
       with:
         user: __token__
         password: ${{ inputs.pypi-token }}
