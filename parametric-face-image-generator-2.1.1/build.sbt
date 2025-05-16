@@ -11,7 +11,7 @@ resolvers += Resolver.bintrayRepo("unibas-gravis", "maven")
 
 libraryDependencies += "ch.unibas.cs.gravis" %% "scalismo-faces" % "0.90.0"
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.15" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % "test"
 
 libraryDependencies += "org.rogach" %% "scallop" % "4.1.0"
 
