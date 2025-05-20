@@ -1,5 +1,5 @@
 - name: Setup Python
-  uses: actions/setup-python@v4.6.0
+  uses: actions/setup-python@v4.9.1
 
 steps:
 - uses: actions/checkout@v3
