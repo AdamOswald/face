@@ -1,7 +1,7 @@
 name := """parametric-image-generator"""
 version       := "1.0"
 
-scalaVersion  := "2.13.10"
+scalaVersion  := "2.13.16"
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 
