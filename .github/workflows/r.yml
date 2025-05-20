@@ -25,7 +25,7 @@ jobs:
         r-version: ['3.6.3', '4.1.1']
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up R ${{ matrix.r-version }}
         uses: r-lib/actions/setup-r@6b49fefb2846ed3e5e6e58366e7f7dfe01377f02
         with:
