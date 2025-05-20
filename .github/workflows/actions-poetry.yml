@@ -1,5 +1,5 @@
 - name: Python Poetry Action
-  uses: abatilo/actions-poetry@v2.3.0
+  uses: abatilo/actions-poetry@v4.0.0
 
 name: CI
 on: pull_request
@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Run image
-        uses: abatilo/actions-poetry@v2
+        uses: abatilo/actions-poetry@v4
         with:
           poetry-version: ${{ matrix.poetry-version }}
       - name: View poetry --help
