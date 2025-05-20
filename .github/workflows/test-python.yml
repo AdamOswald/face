@@ -23,7 +23,7 @@ jobs:
         python: [3.5.4, 3.6.7, 3.7.5, 3.8.1]
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: setup-python ${{ matrix.python }}
       id: setup-python
@@ -58,7 +58,7 @@ jobs:
         python: [3.5.4, 3.6.7, 3.7.5, 3.8.1]
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: build-version-file ${{ matrix.python }}
       run: echo ${{ matrix.python }} > .python-version
@@ -95,7 +95,7 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-18.04, ubuntu-20.04]
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: setup-python 3.9.0-beta.4
       id: setup-python
@@ -129,7 +129,7 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: setup-python 3.9-dev
       id: setup-python
@@ -158,7 +158,7 @@ jobs:
         python: ["3.7", "3.8", "3.9", "3.10"]
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: setup-python ${{ matrix.python }}
       id: setup-python
@@ -181,7 +181,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.8", "3.9", "3.10"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Python and check latest
         uses: ./
         with:
