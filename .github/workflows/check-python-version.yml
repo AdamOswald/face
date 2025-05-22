@@ -1,12 +1,12 @@
 - name: Check Python Version
-  uses: samuelcolvin/check-python-version@v3
+  uses: samuelcolvin/check-python-version@v4
 
 
 jobs:
   deploy:
     steps:
       - ...
-      - uses: samuelcolvin/check-python-version@v3
+      - uses: samuelcolvin/check-python-version@v4
         id: check-python-version
         with:
           version_file_path: mypackage/version.py
