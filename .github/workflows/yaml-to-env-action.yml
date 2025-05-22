@@ -1,5 +1,5 @@
 - name: YAML to ENV
-  uses: dcarbone/yaml-to-env-action@v2.1.1
+  uses: dcarbone/yaml-to-env-action@v3.0.1
 
 name: YAML to Env Example Workflow
 
@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set ENV values from YAML
-        uses: dcarbone/yaml-to-env-action@v2.1.1
+        uses: dcarbone/yaml-to-env-action@v3.0.1
         with:
           debug: '${{ inputs.debug }}'
           yaml-file: '${{ inputs.yaml-file }}'
